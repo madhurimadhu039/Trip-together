@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TripTogether — AI-Powered Family Trip Planner</title>
+    <script>
+      // Single Page Application redirect for GitHub Pages
+      // Preserves sub-routes on refresh
+      sessionStorage.redirect = location.href;
+      var pathSegments = location.pathname.split('/');
+      var repoName = pathSegments[1] ? '/' + pathSegments[1] : '';
+      location.replace(repoName + '/');
+    </script>
+  </head>
+  <body>
+    <p>Redirecting to TripTogether...</p>
+  </body>
+</html>
