@@ -1,5 +1,4 @@
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -17,6 +16,23 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json());
+
+// API root & health check for Vercel deployment verification
+app.get('/api', (_req, res) => {
+  res.json({
+    status: 'ok',
+    app: 'TripTogether API',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/api/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    app: 'TripTogether API',
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // Server-side user credential store for Email & Password authentication
 const registeredUsers = new Map<
@@ -471,6 +487,7 @@ Provide a concise, practical 3-sentence executive summary advising this family o
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
