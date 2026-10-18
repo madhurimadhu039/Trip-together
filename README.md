@@ -32,33 +32,39 @@
 
 ---
 
-## 🚀 Live Deployment on Vercel
+## 🚀 Live Deployment Options
 
-This application is fully optimized for **zero-config deployment on Vercel** as a hybrid Vite Single Page Application + Express Serverless API.
+### Option 1: GitHub Pages (Free Static Hosting)
 
-### Option 1: Deploy with Vercel Git Integration (Recommended)
+The repository is pre-configured to deploy to GitHub Pages either via GitHub Actions or the `docs/` folder:
+
+#### Method A: GitHub Actions (Recommended for GitHub Pages)
+1. In your GitHub repository, navigate to **Settings** → **Pages** (under "Code and automation").
+2. Under **Build and deployment** → **Source**, select **`GitHub Actions`**.
+3. Every time you push to the `main` branch, the `.github/workflows/deploy.yml` workflow automatically builds and publishes the site to:
+   👉 **`https://madhurimadhu039.github.io/Trip-together/`**
+
+#### Method B: Deploy from `/docs` Folder (Zero-Workflow Static)
+1. In **Settings** → **Pages**, select **`Deploy from a branch`**.
+2. Under **Branch**, select **`main`** and choose folder **`/docs`** (instead of `/ (root)`).
+3. Click **Save**. The website will be served directly at:
+   👉 **`https://madhurimadhu039.github.io/Trip-together/`**
+
+---
+
+### Option 2: Vercel (Full-Stack with Live Gemini AI API)
+
+For live server-side AI execution with the `@google/genai` Gemini 3.8 Flash model, deploy to Vercel:
 
 1. Go to [Vercel Dashboard](https://vercel.com/new).
 2. Click **"Import Git Repository"** and select `madhurimadhu039/Trip-together`.
 3. Configure the Project:
    - **Framework Preset**: `Vite`
-   - **Build Command**: `npm run build` (or `vite build`)
+   - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
 4. Add Environment Variables:
    - `GEMINI_API_KEY`: Your Google Gemini API Key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-   - *(Optional external adapters)*: `IRCTC_RAPIDAPI_KEY`, `REDBUS_PARTNER_API_KEY`, `AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`, `HOTELBEDS_API_KEY`.
-5. Click **"Deploy"**. Vercel will build the frontend assets and automatically serve the API via `api/index.ts`.
-
-### Option 2: Deploy via Vercel CLI
-
-```bash
-# 1. Install or run Vercel CLI
-npx vercel
-
-# 2. Follow prompts to link project and deploy
-# For production deployment:
-npx vercel --prod
-```
+5. Click **"Deploy"**. Vercel will host the frontend and serve serverless functions via `api/index.ts`.
 
 ---
 

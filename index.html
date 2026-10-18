@@ -14,18 +14,29 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // Single Page Application redirect restoration for GitHub Pages
+      (function() {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, null, redirect);
+        }
+      })();
+    </script>
+    <script id="github-pages-root-redirect">
+      // If served directly as uncompiled repository source files on github.io (main / root),
+      // redirect immediately to /docs/ where the compiled production assets are ready
+      if (window.location.hostname.endsWith('github.io')) {
+        var pathname = window.location.pathname.replace(/\/+$/, '');
+        if (!pathname.endsWith('/docs')) {
+          window.location.replace(pathname + '/docs/' + window.location.search + window.location.hash);
+        }
+      }
+    </script>
   </head>
   <body class="bg-[#FAF9F6] text-slate-900 antialiased selection:bg-[#0D4A42] selection:text-white">
     <div id="root"></div>
-    <script>
-      // Automatic GitHub Pages static root fallback
-      // Only redirects if served directly as uncompiled repository files on github.io
-      if (window.location.hostname.endsWith('github.io') && document.querySelector('script[src*="main.tsx"]')) {
-        var base = window.location.pathname.replace(/\/+$/, '');
-        window.location.replace(base + '/docs/' + window.location.search + window.location.hash);
-      }
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

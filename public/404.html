@@ -6,14 +6,18 @@
     <title>TripTogether — AI-Powered Family Trip Planner</title>
     <script>
       // Single Page Application redirect for GitHub Pages
-      // Preserves sub-routes on refresh
+      // Preserves sub-routes and query strings on refresh
       sessionStorage.redirect = location.href;
       var pathSegments = location.pathname.split('/');
-      var repoName = pathSegments[1] ? '/' + pathSegments[1] : '';
-      location.replace(repoName + '/');
+      var base = '/' + (pathSegments[1] || '');
+      if (pathSegments[2] === 'docs') {
+        base += '/docs';
+      }
+      location.replace(base + '/');
     </script>
   </head>
-  <body>
-    <p>Redirecting to TripTogether...</p>
+  <body style="font-family: system-ui, -apple-system, sans-serif; text-align: center; padding-top: 60px; background-color: #FAF9F6; color: #1E332A;">
+    <h2>TripTogether</h2>
+    <p>Loading application...</p>
   </body>
 </html>
