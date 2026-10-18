@@ -56,6 +56,8 @@ import { FamilyTrackingSection } from './components/FamilyTrackingSection';
 import { FamilyChatSection } from './components/FamilyChatSection';
 import { PackingChecklistSection } from './components/PackingChecklistSection';
 import { BudgetSection } from './components/BudgetSection';
+import { DestinationSearchBar } from './components/DestinationSearchBar';
+import type { PopularDestination } from './data/popularDestinations';
 
 // High-fidelity generated assets
 import heroTirupatiImg from './assets/images/tirupati_hills_hero_1791742985128.jpg';
@@ -527,21 +529,28 @@ export default function App() {
     activeSection === 'checklist' ||
     activeSection === 'budget';
 
-  const handleTopSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!authUser) {
-      openAuthPrompt('transport');
-      return;
-    }
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) {
+  const handleSelectDestination = (dest: PopularDestination) => {
+    setSearchQuery(dest.name);
+    setTripParams((prev) => ({
+      ...prev,
+      destination: dest.fullName || dest.name,
+    }));
+    setToastMessage(`Exploring ${dest.name} (${dest.state}) — loading verified transport & hotels`);
+    setTimeout(() => setToastMessage(null), 3500);
+    navigateAndScroll('transport');
+  };
+
+  const handleTopSearchSubmit = (selectedDestName?: string) => {
+    const raw = (selectedDestName || searchQuery).trim();
+    if (!raw) {
       navigateAndScroll('transport');
       return;
     }
+    const q = raw.toLowerCase();
 
     // Parse "Origin to Destination" if user types "X to Y"
     if (q.includes(' to ')) {
-      const parts = searchQuery.split(/ to /i);
+      const parts = raw.split(/ to /i);
       if (parts[0]?.trim() && parts[1]?.trim()) {
         setTripParams((prev) => ({
           ...prev,
@@ -549,6 +558,17 @@ export default function App() {
           destination: parts[1].trim(),
         }));
       }
+    } else if (
+      !q.includes('hotel') &&
+      !q.includes('room') &&
+      !q.includes('package') &&
+      !q.includes('stay') &&
+      !q.includes('chat') &&
+      !q.includes('track') &&
+      !q.includes('pack') &&
+      !q.includes('budget')
+    ) {
+      setTripParams((prev) => ({ ...prev, destination: raw }));
     }
 
     if (
@@ -561,7 +581,7 @@ export default function App() {
       q.includes('haritha') ||
       q.includes('choultry')
     ) {
-      setToastMessage(`Showing verified hotels & rooms matching "${searchQuery.trim()}"`);
+      setToastMessage(`Showing verified hotels & rooms matching "${raw}"`);
       setTimeout(() => setToastMessage(null), 3500);
       navigateAndScroll('hotels');
     } else if (
@@ -570,7 +590,7 @@ export default function App() {
       q.includes('aptdc') ||
       q.includes('tour')
     ) {
-      setToastMessage(`Showing tour packages matching "${searchQuery.trim()}"`);
+      setToastMessage(`Showing tour packages matching "${raw}"`);
       setTimeout(() => setToastMessage(null), 3500);
       navigateAndScroll('packages');
     } else if (
@@ -580,7 +600,7 @@ export default function App() {
       q.includes('ai') ||
       q.includes('custom')
     ) {
-      setToastMessage(`Opening Custom Trip Builder & AI Advisor for "${searchQuery.trim()}"`);
+      setToastMessage(`Opening Custom Trip Builder & AI Advisor for "${raw}"`);
       setTimeout(() => setToastMessage(null), 3500);
       navigateAndScroll('builder');
     } else if (q.includes('track') || q.includes('gps') || q.includes('map') || q.includes('location')) {
@@ -592,16 +612,7 @@ export default function App() {
     } else if (q.includes('budget') || q.includes('cost') || q.includes('booking')) {
       navigateAndScroll('budget');
     } else {
-      // If user typed a city or train/bus/flight query, update destination if single place and open Transport
-      if (
-        !q.includes('train') &&
-        !q.includes('bus') &&
-        !q.includes('flight') &&
-        !q.includes(' to ')
-      ) {
-        setTripParams((prev) => ({ ...prev, destination: searchQuery.trim() }));
-      }
-      setToastMessage(`Searching transport options for "${searchQuery.trim()}"`);
+      setToastMessage(`Searching transport options for "${raw}"`);
       setTimeout(() => setToastMessage(null), 3500);
       navigateAndScroll('transport');
     }
@@ -1197,36 +1208,29 @@ export default function App() {
         {activeSection === 'dashboard' ? (
           <div>
             {/* 1. Full-Bleed Scenic Hero Section with Clean Search Bar at the Top of Main Section */}
-            <section className="relative w-full min-h-[560px] lg:min-h-[620px] flex flex-col items-center justify-between text-center px-4 sm:px-6 pt-8 pb-16 overflow-hidden">
-              <img
-                src={heroTirupatiImg}
-                alt="Sunrise over Tirumala Seshachalam Hills"
-                referrerPolicy="no-referrer"
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-              {/* Warm sunlit scrim for high contrast */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/35 to-black/65" />
-
-              {/* Single Clean Working Search Bar at the Top of the Main Section */}
-              <form
-                onSubmit={handleTopSearchSubmit}
-                className="relative z-10 w-full max-w-2xl mx-auto bg-white/95 backdrop-blur-md rounded-full shadow-xl border border-white/40 p-1.5 pl-5 flex items-center gap-3"
-              >
-                <Search className="w-4 h-4 text-stone-400 shrink-0" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search trains, buses, Tirupati hotels, TTD packages, or type 'Kakinada to Tirupati'..."
-                  className="flex-1 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-stone-400 bg-transparent focus:outline-none"
+            <section className="relative w-full min-h-[560px] lg:min-h-[620px] flex flex-col items-center justify-between text-center px-4 sm:px-6 pt-8 pb-16 overflow-visible">
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <img
+                  src={heroTirupatiImg}
+                  alt="Sunrise over Tirumala Seshachalam Hills"
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
                 />
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 text-xs font-bold tracking-wider text-white bg-[#1E332A] hover:bg-[#14241D] rounded-full transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                >
-                  SEARCH
-                </button>
-              </form>
+                {/* Warm sunlit scrim for high contrast */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/35 to-black/65" />
+              </div>
+
+              {/* Interactive Search Bar with Real-Time Popular Destination Suggestions */}
+              <div className="relative z-30 w-full max-w-2xl mx-auto">
+                <DestinationSearchBar
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  onSubmit={handleTopSearchSubmit}
+                  onSelectDestination={handleSelectDestination}
+                  placeholder="Search destinations (e.g. 'tiru' for Tirupati, Thiruvananthapuram) or 'Kakinada to Tirupati'..."
+                  variant="hero"
+                />
+              </div>
 
               {/* Center Hero Headline & CTAs */}
               <div className="relative z-10 max-w-3xl mx-auto text-white space-y-5 my-auto pt-8">
@@ -1818,25 +1822,16 @@ export default function App() {
                   ← Back to Home Overview
                 </button>
 
-                <form
-                  onSubmit={handleTopSearchSubmit}
-                  className="w-full max-w-xl bg-white rounded-full shadow-md p-1 pl-4 flex items-center gap-2"
-                >
-                  <Search className="w-4 h-4 text-stone-400 shrink-0" />
-                  <input
-                    type="text"
+                <div className="w-full max-w-xl">
+                  <DestinationSearchBar
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search trains, buses, Tirupati hotels, packages, itinerary..."
-                    className="flex-1 text-xs font-medium text-slate-900 placeholder:text-stone-400 bg-transparent focus:outline-none"
+                    onChange={setSearchQuery}
+                    onSubmit={handleTopSearchSubmit}
+                    onSelectDestination={handleSelectDestination}
+                    placeholder="Search destinations (e.g. 'tiru'), hotels, packages, itinerary..."
+                    variant="compact"
                   />
-                  <button
-                    type="submit"
-                    className="px-5 py-2 text-xs font-bold tracking-wider text-white bg-[#1E332A] hover:bg-[#14241D] rounded-full transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                  >
-                    SEARCH
-                  </button>
-                </form>
+                </div>
 
                 <span className="text-xs font-mono-num text-stone-300 whitespace-nowrap shrink-0">
                   Planned: ₹{totalPlannedCost.toLocaleString('en-IN')} / ₹{tripParams.totalBudget.toLocaleString('en-IN')}

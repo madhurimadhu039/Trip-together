@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import app from './api/index';
 
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5173;
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

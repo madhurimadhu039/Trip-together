@@ -481,10 +481,12 @@ Generate a JSON object with:
   }
 });
 
-// Dual mount router:
-// /api mounts requests matching /api/...
-// / mounts requests if Vercel stripped /api or directly hit root
+// Mount API router
 app.use('/api', router);
-app.use('/', router);
+
+// Only mount at root in Vercel serverless environment where rewrites might strip /api
+if (process.env.VERCEL) {
+  app.use('/', router);
+}
 
 export default app;
