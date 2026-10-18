@@ -8,6 +8,7 @@ import {
   TIRUPATI_HOTELS,
   TIRUPATI_PACKAGES,
 } from '../src/data';
+import { getRecommendedDestinations } from '../src/data/popularDestinations';
 
 dotenv.config();
 
@@ -264,6 +265,25 @@ router.get('/travel/catalog', (_req, res) => {
     packages: TIRUPATI_PACKAGES,
     lastNormalizedAt: new Date().toISOString(),
   });
+});
+
+// 4b. Destination Search Autocomplete Endpoint
+router.get('/destinations/search', (req, res) => {
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    if (!q) {
+      return res.json({ destinations: [], query: '', total: 0 });
+    }
+    const results = getRecommendedDestinations(q, 10);
+    return res.json({
+      destinations: results,
+      query: q,
+      total: results.length,
+    });
+  } catch (error) {
+    console.error('Destination search error:', error);
+    return res.status(500).json({ error: 'Failed to search destinations' });
+  }
 });
 
 // 5. AI Trip Recommendation Engine Endpoint

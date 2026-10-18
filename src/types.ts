@@ -1,3 +1,5 @@
+import type { PopularDestination } from './data/popularDestinations';
+
 export type NavSection =
   | 'dashboard'
   | 'transport'
@@ -12,6 +14,8 @@ export type NavSection =
 export interface TripParams {
   origin: string;
   destination: string;
+  destinationId?: string;
+  destinationDetails?: PopularDestination | null;
   travelDate: string;
   urgency: 'today' | 'tomorrow' | 'scheduled';
   travellers: number;

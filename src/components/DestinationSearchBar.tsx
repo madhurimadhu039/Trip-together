@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import {
   Search,
   MapPin,
@@ -8,102 +8,218 @@ import {
   Compass,
   Calendar,
   IndianRupee,
-  Flame,
+  Loader2,
 } from 'lucide-react';
 import {
   PopularDestination,
-  POPULAR_DESTINATIONS,
   getRecommendedDestinations,
 } from '../data/popularDestinations';
 
-interface DestinationSearchBarProps {
+export interface DestinationSearchBarProps {
   value: string;
   onChange: (value: string) => void;
-  onSubmit: (selectedDestination?: string) => void;
+  onSubmit: (selectedQuery?: string, selectedDestination?: PopularDestination | null) => void;
   placeholder?: string;
   className?: string;
   variant?: 'hero' | 'compact';
   onSelectDestination?: (destination: PopularDestination) => void;
+  onClearDestination?: () => void;
+  selectedDestination?: PopularDestination | null;
 }
 
 export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
   value,
   onChange,
   onSubmit,
-  placeholder = "Search trains, buses, Tirupati hotels, packages, or type 'Kakinada to Tirupati'...",
+  placeholder = 'Where do you want to go?',
   className = '',
   variant = 'hero',
   onSelectDestination,
+  onClearDestination,
+  selectedDestination,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('All');
+  const [recommendations, setRecommendations] = useState<PopularDestination[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentSelected, setCurrentSelected] = useState<PopularDestination | null>(
+    selectedDestination || null
+  );
+
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listboxId = useId();
 
-  // Compute recommendations based on input query
-  const cleanQuery = value.trim();
-  const rawRecommendations = getRecommendedDestinations(cleanQuery, 8);
-
-  const recommendations =
-    selectedCategoryFilter === 'All'
-      ? rawRecommendations
-      : rawRecommendations.filter(
-          (d) => d.category.toLowerCase() === selectedCategoryFilter.toLowerCase()
-        );
-
-  // Close dropdown when clicking outside
+  // Sync with prop if passed
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
+    if (selectedDestination !== undefined) {
+      setCurrentSelected(selectedDestination);
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [selectedDestination]);
+
+  const cleanQuery = value.trim();
+
+  // Handle debounced search when user types
+  useEffect(() => {
+    if (!cleanQuery) {
+      setRecommendations([]);
+      setIsLoading(false);
+      setIsOpen(false);
+      return;
+    }
+
+    // Immediately compute synchronous results from verified catalog
+    const immediateMatches = getRecommendedDestinations(cleanQuery, 8);
+    setRecommendations(immediateMatches);
+
+    // Asynchronously verify against API with debouncing to avoid excessive calls
+    setIsLoading(true);
+    let isCancelled = false;
+
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/destinations/search?q=${encodeURIComponent(cleanQuery)}`
+        );
+        if (response.ok && !isCancelled) {
+          const data = await response.json();
+          if (Array.isArray(data.destinations)) {
+            setRecommendations(data.destinations);
+          }
+        }
+      } catch {
+        // Fallback gracefully to local matches if server or network error occurs
+        if (!isCancelled) {
+          setRecommendations(immediateMatches);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }, 150);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [cleanQuery]);
 
   // Reset active keyboard index when query changes
   useEffect(() => {
     setActiveIndex(-1);
   }, [value]);
 
-  const handleSelect = (dest: PopularDestination) => {
-    onChange(dest.name);
-    setIsOpen(false);
-    if (onSelectDestination) {
-      onSelectDestination(dest);
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setActiveIndex(-1);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = e.target.value;
+    onChange(newVal);
+
+    // If user modifies text, clear any previously selected destination
+    if (currentSelected && newVal.trim().toLowerCase() !== currentSelected.name.toLowerCase()) {
+      setCurrentSelected(null);
+      onClearDestination?.();
+    }
+
+    // Suggestions should only open when user starts typing a non-empty query
+    if (newVal.trim().length > 0) {
+      setIsOpen(true);
     } else {
-      onSubmit(dest.name);
+      setIsOpen(false);
+      setRecommendations([]);
+      setCurrentSelected(null);
+      onClearDestination?.();
     }
   };
 
+  const handleSelect = (dest: PopularDestination) => {
+    setCurrentSelected(dest);
+    onChange(dest.name);
+    setIsOpen(false);
+    setActiveIndex(-1);
+
+    if (onSelectDestination) {
+      onSelectDestination(dest);
+    } else {
+      onSubmit(dest.name, dest);
+    }
+  };
+
+  const handleClear = () => {
+    onChange('');
+    setCurrentSelected(null);
+    onClearDestination?.();
+    setRecommendations([]);
+    setIsOpen(false);
+    setActiveIndex(-1);
+    inputRef.current?.focus();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!isOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-      setIsOpen(true);
+    // Arrow down
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isOpen) {
+        if (cleanQuery.length > 0) setIsOpen(true);
+        return;
+      }
+      if (recommendations.length > 0) {
+        setActiveIndex((prev) => (prev < recommendations.length - 1 ? prev + 1 : 0));
+      }
       return;
     }
 
-    if (e.key === 'ArrowDown') {
+    // Arrow up
+    if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActiveIndex((prev) =>
-        prev < recommendations.length - 1 ? prev + 1 : 0
-      );
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActiveIndex((prev) =>
-        prev > 0 ? prev - 1 : recommendations.length - 1
-      );
-    } else if (e.key === 'Enter') {
+      if (!isOpen) {
+        if (cleanQuery.length > 0) setIsOpen(true);
+        return;
+      }
+      if (recommendations.length > 0) {
+        setActiveIndex((prev) => (prev > 0 ? prev - 1 : recommendations.length - 1));
+      }
+      return;
+    }
+
+    // Enter key
+    if (e.key === 'Enter') {
       if (isOpen && activeIndex >= 0 && recommendations[activeIndex]) {
         e.preventDefault();
         handleSelect(recommendations[activeIndex]);
       } else {
         setIsOpen(false);
-        onSubmit();
+        const trimmed = value.trim();
+        const effectiveDest =
+          currentSelected && currentSelected.name.toLowerCase() === trimmed.toLowerCase()
+            ? currentSelected
+            : null;
+        onSubmit(trimmed, effectiveDest);
       }
-    } else if (e.key === 'Escape') {
+      return;
+    }
+
+    // Escape key
+    if (e.key === 'Escape') {
+      e.preventDefault();
       setIsOpen(false);
+      setActiveIndex(-1);
+      return;
     }
   };
 
@@ -113,11 +229,16 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
       handleSelect(recommendations[activeIndex]);
     } else {
       setIsOpen(false);
-      onSubmit();
+      const trimmed = value.trim();
+      const effectiveDest =
+        currentSelected && currentSelected.name.toLowerCase() === trimmed.toLowerCase()
+          ? currentSelected
+          : null;
+      onSubmit(trimmed, effectiveDest);
     }
   };
 
-  // Helper to highlight matching text
+  // Helper to highlight matching text in suggestion name
   const highlightMatch = (text: string, query: string) => {
     if (!query) return text;
     const cleanQ = query.trim().toLowerCase();
@@ -136,8 +257,6 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
       </>
     );
   };
-
-  const categories = ['All', 'Pilgrimage', 'Coastal & Beach', 'Hill Station', 'Heritage & Culture'];
 
   return (
     <div ref={containerRef} className={`relative w-full ${className}`}>
@@ -159,24 +278,32 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
           ref={inputRef}
           type="text"
           value={value}
-          onChange={(e) => {
-            onChange(e.target.value);
-            if (!isOpen) setIsOpen(true);
+          onChange={handleInputChange}
+          onFocus={() => {
+            // Only show suggestions dropdown on focus if the user has already entered a query
+            if (value.trim().length > 0) {
+              setIsOpen(true);
+            }
           }}
-          onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           autoComplete="off"
+          role="combobox"
+          aria-expanded={isOpen && cleanQuery.length > 0}
+          aria-autocomplete="list"
+          aria-controls={listboxId}
+          aria-activedescendant={
+            activeIndex >= 0 && recommendations[activeIndex]
+              ? `dest-option-${recommendations[activeIndex].id}`
+              : undefined
+          }
           className="flex-1 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-stone-400 bg-transparent focus:outline-none min-w-0"
         />
 
         {value && (
           <button
             type="button"
-            onClick={() => {
-              onChange('');
-              inputRef.current?.focus();
-            }}
+            onClick={handleClear}
             className="p-1 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer shrink-0"
             title="Clear search"
           >
@@ -196,62 +323,38 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
         </button>
       </form>
 
-      {/* Autocomplete & Recommendations Popover Dropdown */}
-      {isOpen && (
+      {/* Autocomplete & Suggestions Popover Dropdown - ONLY appears when user has entered a valid search query */}
+      {isOpen && cleanQuery.length > 0 && (
         <div
+          id={listboxId}
+          role="listbox"
           className="absolute left-0 right-0 top-full mt-2.5 z-50 bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-stone-200/90 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 text-left"
           style={{ maxHeight: 'min(520px, 80vh)' }}
         >
           {/* Popover Header */}
           <div className="bg-gradient-to-r from-stone-50 via-amber-50/40 to-stone-50 px-4 py-2.5 border-b border-stone-200/80 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-800">
-              {cleanQuery ? (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                  <span>
-                    Recommended Places matching{' '}
-                    <span className="text-[#1E332A] font-bold">"{cleanQuery}"</span>
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Flame className="w-3.5 h-3.5 text-orange-600" />
-                  <span className="text-stone-900">
-                    Famous & Popular Places to Visit
-                  </span>
-                </>
-              )}
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span>
+                Matching Destinations for{' '}
+                <span className="text-[#1E332A] font-bold">"{cleanQuery}"</span>
+              </span>
             </div>
 
-            <span className="text-[11px] text-stone-500 font-medium">
-              {recommendations.length} {recommendations.length === 1 ? 'place' : 'places'} found
-            </span>
+            <div className="flex items-center gap-2">
+              {isLoading && (
+                <div className="flex items-center gap-1 text-[11px] text-amber-800 font-medium">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Searching...</span>
+                </div>
+              )}
+              <span className="text-[11px] text-stone-500 font-medium">
+                {recommendations.length} {recommendations.length === 1 ? 'destination' : 'destinations'} found
+              </span>
+            </div>
           </div>
 
-          {/* Category Filter Pills (When search input is short or empty) */}
-          {cleanQuery.length <= 2 && (
-            <div className="px-4 py-2 bg-white border-b border-stone-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-              <span className="text-[10px] uppercase tracking-wider text-stone-400 font-bold shrink-0 mr-1">
-                Filter:
-              </span>
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setSelectedCategoryFilter(cat)}
-                  className={`text-[11px] px-2.5 py-0.5 rounded-full transition-colors whitespace-nowrap cursor-pointer shrink-0 font-medium ${
-                    selectedCategoryFilter === cat
-                      ? 'bg-[#1E332A] text-white font-semibold shadow-xs'
-                      : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* List of Recommended Destinations */}
+          {/* List of Matching Destinations */}
           <div className="divide-y divide-stone-100 max-h-[360px] overflow-y-auto overscroll-contain">
             {recommendations.length > 0 ? (
               recommendations.map((dest, idx) => {
@@ -259,7 +362,15 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
                 return (
                   <button
                     key={dest.id}
+                    id={`dest-option-${dest.id}`}
+                    role="option"
+                    aria-selected={isSelected}
                     type="button"
+                    onMouseDown={(e) => {
+                      // Prevent input blur before selection completes
+                      e.preventDefault();
+                      handleSelect(dest);
+                    }}
                     onClick={() => handleSelect(dest)}
                     onMouseEnter={() => setActiveIndex(idx)}
                     className={`w-full text-left px-4 py-3 flex items-start gap-3.5 transition-all group cursor-pointer ${
@@ -286,7 +397,7 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
                           {highlightMatch(dest.name, cleanQuery)}
                         </span>
                         <span className="text-xs text-stone-500 font-medium">
-                          • {dest.state}
+                          • {dest.state}, {dest.country || 'India'}
                         </span>
 
                         {dest.badge && (
@@ -301,21 +412,27 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
                       </div>
 
                       {/* Attractions & Highlights */}
-                      <p className="text-xs text-stone-600 line-clamp-1 mb-1">
-                        <span className="text-stone-400 font-medium">Attractions: </span>
-                        {dest.popularAttractions}
-                      </p>
+                      {dest.popularAttractions && (
+                        <p className="text-xs text-stone-600 line-clamp-1 mb-1">
+                          <span className="text-stone-400 font-medium">Attractions: </span>
+                          {dest.popularAttractions}
+                        </p>
+                      )}
 
                       {/* Season & Budget Metadata */}
                       <div className="flex items-center gap-3 text-[11px] text-stone-500">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-stone-400" />
-                          Best: {dest.bestSeason}
-                        </span>
-                        <span className="flex items-center gap-1 font-mono-num">
-                          <IndianRupee className="w-3 h-3 text-stone-400" />
-                          Stay from {dest.approxNightBudget}/night
-                        </span>
+                        {dest.bestSeason && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-stone-400" />
+                            Best: {dest.bestSeason}
+                          </span>
+                        )}
+                        {dest.approxNightBudget && (
+                          <span className="flex items-center gap-1 font-mono-num">
+                            <IndianRupee className="w-3 h-3 text-stone-400" />
+                            Stay from {dest.approxNightBudget}/night
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -335,26 +452,26 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
                   </button>
                 );
               })
-            ) : (
+            ) : !isLoading ? (
               <div className="px-6 py-8 text-center space-y-2">
                 <Compass className="w-8 h-8 mx-auto text-stone-300" />
                 <p className="text-sm font-semibold text-slate-800">
-                  No predefined destination matching "{cleanQuery}"
+                  No destinations found matching "{cleanQuery}"
                 </p>
                 <p className="text-xs text-stone-500 max-w-sm mx-auto">
-                  You can still press <kbd className="px-1.5 py-0.5 bg-stone-100 rounded text-stone-700 font-mono text-[11px]">Enter</kbd> to search trains, buses, and hotels for "{cleanQuery}".
+                  We couldn't find any destination matching your search. You can still press <kbd className="px-1.5 py-0.5 bg-stone-100 rounded text-stone-700 font-mono text-[11px]">Enter</kbd> to search trains, buses, and hotels for "{cleanQuery}".
                 </p>
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* Popover Footer Info */}
           <div className="px-4 py-2 bg-stone-50/90 border-t border-stone-200/80 flex items-center justify-between text-[11px] text-stone-500">
             <span>
-              💡 Select any place to auto-plan trains, buses & budget stays
+              💡 Select any destination to auto-plan trains, buses & budget stays
             </span>
             <span className="hidden sm:inline text-stone-400 font-mono">
-              ↑↓ to navigate • ↵ to select
+              ↑↓ to navigate • ↵ to select • Esc to close
             </span>
           </div>
         </div>

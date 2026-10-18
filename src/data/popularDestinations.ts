@@ -3,6 +3,7 @@ export interface PopularDestination {
   name: string;
   fullName: string;
   state: string;
+  country: string;
   category: 'Pilgrimage' | 'Hill Station' | 'Coastal & Beach' | 'Heritage & Culture' | 'Nature & Wildlife';
   badge?: string;
   popularAttractions: string;
@@ -11,7 +12,7 @@ export interface PopularDestination {
   aliases: string[];
 }
 
-export const POPULAR_DESTINATIONS: PopularDestination[] = [
+const RAW_DESTINATIONS: Omit<PopularDestination, 'country'>[] = [
   {
     id: 'dest-tirupati',
     name: 'Tirupati',
@@ -449,16 +450,22 @@ export const POPULAR_DESTINATIONS: PopularDestination[] = [
   },
 ];
 
+export const POPULAR_DESTINATIONS: PopularDestination[] = RAW_DESTINATIONS.map((d) => ({
+  country: 'India',
+  ...d,
+}));
+
 /**
  * Filter destinations based on user input query.
- * Matches by name, full name, state, category, popular attractions, and aliases.
+ * Matches by name, full name, state, country, category, popular attractions, and aliases.
+ * Returns empty array when query is empty.
  */
-export function getRecommendedDestinations(query: string, maxResults = 7): PopularDestination[] {
+export function getRecommendedDestinations(query: string, maxResults = 8): PopularDestination[] {
   const clean = query.trim().toLowerCase();
 
-  // If query is empty, return top trending places with Tirupati & Thiruvananthapuram first
+  // If query is empty, do not display any destination suggestions
   if (!clean) {
-    return POPULAR_DESTINATIONS.slice(0, maxResults);
+    return [];
   }
 
   // Exact prefix matches on name or aliases get the highest priority
@@ -467,47 +474,68 @@ export function getRecommendedDestinations(query: string, maxResults = 7): Popul
     const nameLower = dest.name.toLowerCase();
     const fullNameLower = dest.fullName.toLowerCase();
     const stateLower = dest.state.toLowerCase();
+    const countryLower = (dest.country || 'India').toLowerCase();
     const catLower = dest.category.toLowerCase();
     const attractionsLower = dest.popularAttractions.toLowerCase();
 
-    // 1. Direct prefix match on city name (e.g. "tiru" -> "Tirupati", "Thiruvananthapuram")
-    if (nameLower.startsWith(clean)) {
-      score += 100;
+    // 1. Direct name match gets highest priority
+    if (nameLower === clean) {
+      score += 350;
+    } else if (nameLower.startsWith(clean)) {
+      // Prefix match on name: shorter names rank higher (e.g. "Ti" -> "Tirupati" before "Tiruchirappalli")
+      score += 220 + Math.max(0, 30 - (nameLower.length - clean.length));
     } else if (nameLower.includes(clean)) {
-      score += 60;
+      score += 70;
     }
 
-    // 2. Prefix or inclusion in aliases (e.g. "tiru" in "tiruvanandhapuram" alias)
+    // Top primary destination priority boost (e.g. Tirupati)
+    if (dest.id === 'dest-tirupati' && (nameLower.includes(clean) || dest.aliases.some(a => a.startsWith(clean)))) {
+      score += 35;
+    }
+
+    // 2. Prefix or inclusion in aliases (if not already exact name match)
     for (const alias of dest.aliases) {
-      if (alias.startsWith(clean)) {
+      if (alias === clean) {
+        score += 120;
+        break;
+      } else if (alias.startsWith(clean)) {
         score += 80;
         break;
       } else if (alias.includes(clean)) {
-        score += 40;
+        score += 30;
         break;
       }
     }
 
     // 3. Match on full name
-    if (fullNameLower.includes(clean)) {
-      score += 30;
-    }
-
-    // 4. Match on state (e.g. "kerala" -> Thiruvananthapuram, Kochi, Munnar)
-    if (stateLower.startsWith(clean)) {
+    if (fullNameLower.startsWith(clean)) {
       score += 50;
-    } else if (stateLower.includes(clean)) {
+    } else if (fullNameLower.includes(clean)) {
       score += 25;
     }
 
-    // 5. Match on category (e.g. "pilgrimage" or "hill station")
-    if (catLower.includes(clean)) {
-      score += 35;
+    // 4. Match on state (only adds secondary weight when city name doesn't already start with query)
+    if (!nameLower.startsWith(clean)) {
+      if (stateLower.startsWith(clean)) {
+        score += 45;
+      } else if (stateLower.includes(clean)) {
+        score += 20;
+      }
     }
 
-    // 6. Match on attractions
+    // 5. Match on country (e.g. "india")
+    if (countryLower.startsWith(clean)) {
+      score += 15;
+    }
+
+    // 6. Match on category
+    if (catLower.includes(clean)) {
+      score += 15;
+    }
+
+    // 7. Match on attractions
     if (attractionsLower.includes(clean)) {
-      score += 20;
+      score += 10;
     }
 
     return { dest, score };

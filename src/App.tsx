@@ -165,6 +165,7 @@ export default function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('dashboard');
   const [familyDropdownOpen, setFamilyDropdownOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedDestination, setSelectedDestination] = useState<PopularDestination | null>(null);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
 
@@ -530,23 +531,75 @@ export default function App() {
     activeSection === 'budget';
 
   const handleSelectDestination = (dest: PopularDestination) => {
+    setSelectedDestination(dest);
     setSearchQuery(dest.name);
     setTripParams((prev) => ({
       ...prev,
       destination: dest.fullName || dest.name,
+      destinationId: dest.id,
+      destinationDetails: dest,
     }));
     setToastMessage(`Exploring ${dest.name} (${dest.state}) — loading verified transport & hotels`);
     setTimeout(() => setToastMessage(null), 3500);
     navigateAndScroll('transport');
   };
 
-  const handleTopSearchSubmit = (selectedDestName?: string) => {
-    const raw = (selectedDestName || searchQuery).trim();
+  const handleClearDestination = () => {
+    setSelectedDestination(null);
+    setTripParams((prev) => ({
+      ...prev,
+      destinationId: undefined,
+      destinationDetails: null,
+    }));
+  };
+
+  const handleSearchQueryChange = (text: string) => {
+    setSearchQuery(text);
+    if (
+      selectedDestination &&
+      text.trim().toLowerCase() !== selectedDestination.name.toLowerCase()
+    ) {
+      setSelectedDestination(null);
+      setTripParams((prev) => ({
+        ...prev,
+        destinationId: undefined,
+        destinationDetails: null,
+      }));
+    }
+  };
+
+  const handleTopSearchSubmit = (
+    selectedDestName?: string,
+    explicitDest?: PopularDestination | null
+  ) => {
+    const raw = (selectedDestName !== undefined ? selectedDestName : searchQuery).trim();
     if (!raw) {
       navigateAndScroll('transport');
       return;
     }
     const q = raw.toLowerCase();
+
+    // Check if an explicit destination was passed or currently matches the input text
+    const activeDest =
+      explicitDest ||
+      (selectedDestination && selectedDestination.name.toLowerCase() === q
+        ? selectedDestination
+        : null);
+
+    if (activeDest) {
+      setTripParams((prev) => ({
+        ...prev,
+        destination: activeDest.fullName || activeDest.name,
+        destinationId: activeDest.id,
+        destinationDetails: activeDest,
+      }));
+    } else {
+      setTripParams((prev) => ({
+        ...prev,
+        destinationId: undefined,
+        destinationDetails: null,
+      }));
+    }
 
     // Parse "Origin to Destination" if user types "X to Y"
     if (q.includes(' to ')) {
@@ -556,6 +609,8 @@ export default function App() {
           ...prev,
           origin: parts[0].trim(),
           destination: parts[1].trim(),
+          destinationId: undefined,
+          destinationDetails: null,
         }));
       }
     } else if (
@@ -568,7 +623,14 @@ export default function App() {
       !q.includes('pack') &&
       !q.includes('budget')
     ) {
-      setTripParams((prev) => ({ ...prev, destination: raw }));
+      if (!activeDest) {
+        setTripParams((prev) => ({
+          ...prev,
+          destination: raw,
+          destinationId: undefined,
+          destinationDetails: null,
+        }));
+      }
     }
 
     if (
@@ -1220,14 +1282,16 @@ export default function App() {
                 <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/35 to-black/65" />
               </div>
 
-              {/* Interactive Search Bar with Real-Time Popular Destination Suggestions */}
+              {/* Interactive Search Bar with Real-Time Destination Autocomplete */}
               <div className="relative z-30 w-full max-w-2xl mx-auto">
                 <DestinationSearchBar
                   value={searchQuery}
-                  onChange={setSearchQuery}
+                  onChange={handleSearchQueryChange}
                   onSubmit={handleTopSearchSubmit}
                   onSelectDestination={handleSelectDestination}
-                  placeholder="Search destinations (e.g. 'tiru' for Tirupati, Thiruvananthapuram) or 'Kakinada to Tirupati'..."
+                  onClearDestination={handleClearDestination}
+                  selectedDestination={selectedDestination}
+                  placeholder="Where do you want to go?"
                   variant="hero"
                 />
               </div>
@@ -1825,10 +1889,12 @@ export default function App() {
                 <div className="w-full max-w-xl">
                   <DestinationSearchBar
                     value={searchQuery}
-                    onChange={setSearchQuery}
+                    onChange={handleSearchQueryChange}
                     onSubmit={handleTopSearchSubmit}
                     onSelectDestination={handleSelectDestination}
-                    placeholder="Search destinations (e.g. 'tiru'), hotels, packages, itinerary..."
+                    onClearDestination={handleClearDestination}
+                    selectedDestination={selectedDestination}
+                    placeholder="Where do you want to go?"
                     variant="compact"
                   />
                 </div>
