@@ -18,6 +18,17 @@ import {
 } from 'lucide-react';
 import type { LocalGuideItem } from '../types';
 
+const isStaticHost = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const { hostname, protocol } = window.location;
+  if (protocol === 'file:') return true;
+  if (hostname.endsWith('.github.io')) return true;
+  if (hostname.endsWith('.vercel.app')) return true;
+  if (hostname.endsWith('.netlify.app')) return true;
+  return false;
+};
+
+
 interface GuideRegisterModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -82,6 +93,14 @@ export const GuideRegisterModal: React.FC<GuideRegisterModalProps> = ({
       .filter(Boolean);
 
     try {
+      // On static hosts (GitHub Pages / Vercel static) there is no API server
+      if (isStaticHost()) {
+        const localGuide = { id: `guide-${Date.now()}`, name: name.trim(), email: email.trim(), serviceLocation: serviceLocation.trim() };
+        setRegisteredGuide(localGuide as any);
+        onSuccess(localGuide as any);
+        return;
+      }
+
       const response = await fetch('/api/guides/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

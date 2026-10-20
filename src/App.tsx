@@ -96,6 +96,25 @@ import { TravellerDashboardSection } from './components/TravellerDashboardSectio
 import { AdminDashboardSection } from './components/AdminDashboardSection';
 import type { PopularDestination } from './data/popularDestinations';
 
+/**
+ * Returns true when running on a static host (GitHub Pages, Vercel static export,
+ * file://, etc.) where there is no Express /api server available.
+ * On these hosts we rely entirely on seed/local data to avoid 404 console spam.
+ */
+const isStaticHost = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const { hostname, protocol } = window.location;
+  // file:// protocol = opened directly as a file
+  if (protocol === 'file:') return true;
+  // GitHub Pages domains
+  if (hostname.endsWith('.github.io')) return true;
+  // Vercel preview/production domains (non-custom)
+  if (hostname.endsWith('.vercel.app')) return true;
+  // Netlify
+  if (hostname.endsWith('.netlify.app')) return true;
+  return false;
+};
+
 // High-fidelity assets
 import heroTirupatiImg from './assets/images/tirupati_hills_hero_1791742985128.jpg';
 import kakinadaGatewayImg from './assets/images/kakinada_coastal_gateway_1791742998081.jpg';
@@ -406,11 +425,18 @@ export default function App() {
     } catch {}
   }, [authUser]);
 
-  // Fetch dynamic database records on load
+  // Fetch dynamic database records on load.
+  // On static hosts (GitHub Pages, Vercel static, Netlify) the Express /api
+  // server is not available, so we skip all network calls and use seed data.
   const loadPlatformData = () => {
+    if (isStaticHost()) {
+      // Seed data is already the initial state — nothing to do.
+      return;
+    }
+
     // Destinations
     fetch('/api/destinations')
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((d) => {
         if (d?.destinations && Array.isArray(d.destinations) && d.destinations.length > 0) {
           setDestinations(d.destinations);
@@ -420,7 +446,7 @@ export default function App() {
 
     // Packages
     fetch('/api/packages')
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((d) => {
         if (d?.packages && Array.isArray(d.packages) && d.packages.length > 0) {
           setPackages(d.packages);
@@ -430,7 +456,7 @@ export default function App() {
 
     // Guides
     fetch('/api/guides')
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((d) => {
         if (d?.guides && Array.isArray(d.guides) && d.guides.length > 0) {
           setGuides(d.guides);
@@ -440,7 +466,7 @@ export default function App() {
 
     // Reviews
     fetch('/api/reviews')
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((d) => {
         if (d?.reviews && Array.isArray(d.reviews) && d.reviews.length > 0) {
           setReviews(d.reviews);
@@ -450,7 +476,7 @@ export default function App() {
 
     // Providers
     fetch('/api/providers/status')
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((data) => {
         if (data?.adapters && Array.isArray(data.adapters) && data.adapters.length > 0) {
           setProviderAdapters(data.adapters);
@@ -593,6 +619,10 @@ export default function App() {
 
     setAuthSubmitting(true);
     try {
+      // On static hosts the API server is unavailable; skip the network call
+      // and fall straight through to the local fallback auth below.
+      if (isStaticHost()) throw new Error('static-host');
+
       const response = await fetch('/api/auth/authenticate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -11,6 +11,16 @@ import {
 } from 'lucide-react';
 import type { PlatformReviewItem } from '../types';
 
+const isStaticHost = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const { hostname, protocol } = window.location;
+  if (protocol === 'file:') return true;
+  if (hostname.endsWith('.github.io')) return true;
+  if (hostname.endsWith('.vercel.app')) return true;
+  if (hostname.endsWith('.netlify.app')) return true;
+  return false;
+};
+
 interface WriteReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -52,6 +62,24 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
     setError(null);
 
     try {
+      // On static hosts (GitHub Pages / Vercel static) there is no API server
+      if (isStaticHost()) {
+        const localReview: PlatformReviewItem = {
+          id: `rev-${Date.now()}`,
+          authorName: authorName.trim(),
+          location: location.trim() || 'Verified Traveler',
+          targetType,
+          targetTitle: targetTitle.trim() || 'Trip Together Platform',
+          rating,
+          comment: comment.trim(),
+          date: new Date().toISOString().split('T')[0],
+          verified: true,
+        } as any;
+        setSubmittedReview(localReview);
+        onSuccess(localReview);
+        return;
+      }
+
       const response = await fetch('/api/reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

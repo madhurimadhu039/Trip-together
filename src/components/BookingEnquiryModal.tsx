@@ -15,6 +15,16 @@ import {
 } from 'lucide-react';
 import type { PackageItem, BookingSubmission } from '../types';
 
+const isStaticHost = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const { hostname, protocol } = window.location;
+  if (protocol === 'file:') return true;
+  if (hostname.endsWith('.github.io')) return true;
+  if (hostname.endsWith('.vercel.app')) return true;
+  if (hostname.endsWith('.netlify.app')) return true;
+  return false;
+};
+
 interface BookingEnquiryModalProps {
   packageItem: PackageItem | null;
   defaultEmail?: string;
@@ -97,6 +107,18 @@ export const BookingEnquiryModal: React.FC<BookingEnquiryModalProps> = ({
     };
 
     try {
+      // On static hosts (GitHub Pages / Vercel static) simulate local confirmation
+      if (isStaticHost()) {
+        const localBooking = {
+          ...submission,
+          bookingRef: `TT-${Date.now().toString(36).toUpperCase()}`,
+          status: 'enquiry_received',
+        };
+        setConfirmedBooking(localBooking);
+        onSuccess(localBooking.bookingRef, packageItem.title);
+        return;
+      }
+
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

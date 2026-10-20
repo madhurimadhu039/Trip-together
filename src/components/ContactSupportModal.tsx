@@ -15,6 +15,16 @@ import {
 } from 'lucide-react';
 import type { ContactTicketItem } from '../types';
 
+const isStaticHost = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const { hostname, protocol } = window.location;
+  if (protocol === 'file:') return true;
+  if (hostname.endsWith('.github.io')) return true;
+  if (hostname.endsWith('.vercel.app')) return true;
+  if (hostname.endsWith('.netlify.app')) return true;
+  return false;
+};
+
 interface ContactSupportModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -58,6 +68,22 @@ export const ContactSupportModal: React.FC<ContactSupportModalProps> = ({
     setError(null);
 
     try {
+      // On static hosts there is no API server — simulate locally
+      if (isStaticHost()) {
+        setConfirmedTicket({
+          id: `tkt-${Date.now()}`,
+          ticketRef: `TKT-${Date.now().toString(36).toUpperCase()}`,
+          name: name.trim(),
+          email: email.trim(),
+          subject: subject.trim() || category,
+          category,
+          message: message.trim(),
+          status: 'open',
+          createdAt: new Date().toISOString(),
+        } as any);
+        return;
+      }
+
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

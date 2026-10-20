@@ -16,6 +16,17 @@ import {
   getRecommendedDestinations,
 } from '../data/popularDestinations';
 
+/** Skip /api calls on GitHub Pages / Vercel static / Netlify — no server runs there */
+const isStaticHost = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const { hostname, protocol } = window.location;
+  if (protocol === 'file:') return true;
+  if (hostname.endsWith('.github.io')) return true;
+  if (hostname.endsWith('.vercel.app')) return true;
+  if (hostname.endsWith('.netlify.app')) return true;
+  return false;
+};
+
 export interface DestinationSearchBarProps {
   value: string;
   onChange: (value: string) => void;
@@ -74,7 +85,13 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
     const immediateMatches = getRecommendedDestinations(cleanQuery, 8);
     setRecommendations(immediateMatches);
 
-    // 3. Debounced verification against API endpoint
+    // 3. Debounced verification against API endpoint (local dev only).
+    //    On static hosts we rely solely on the synchronous prefix match above.
+    if (isStaticHost()) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     let isCancelled = false;
 
@@ -85,7 +102,7 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
         );
         if (response.ok && !isCancelled) {
           const data = await response.json();
-          if (Array.isArray(data.destinations)) {
+          if (Array.isArray(data.destinations) && data.destinations.length > 0) {
             setRecommendations(data.destinations);
           }
         }
