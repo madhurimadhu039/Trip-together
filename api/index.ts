@@ -501,6 +501,34 @@ Generate a JSON object with:
   }
 });
 
+// Favicon fallback handlers to prevent 404s in serverless and reverse-proxy environments
+const FAVICON_SVG_CONTENT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D4A42" />
+      <stop offset="100%" stop-color="#14B8A6" />
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="24" fill="url(#grad)" />
+  <path d="M28 68 L50 28 L72 68 Z" fill="#D97706" opacity="0.9" />
+  <path d="M38 68 L50 44 L62 68 Z" fill="#FBBF24" />
+  <circle cx="50" cy="24" r="7" fill="#FBBF24" />
+  <path d="M24 74 L76 74" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.8" />
+  <circle cx="34" cy="74" r="3" fill="#FFFFFF" />
+  <circle cx="66" cy="74" r="3" fill="#FFFFFF" />
+</svg>`;
+
+const serveFavicon = (_req: express.Request, res: express.Response) => {
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send(FAVICON_SVG_CONTENT);
+};
+
+app.get('/favicon.ico', serveFavicon);
+app.get('/favicon.svg', serveFavicon);
+router.get('/favicon.ico', serveFavicon);
+router.get('/favicon.svg', serveFavicon);
+
 // Mount API router
 app.use('/api', router);
 

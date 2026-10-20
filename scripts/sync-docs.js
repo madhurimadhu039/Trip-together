@@ -13,17 +13,29 @@ if (fs.existsSync(distDir)) {
     fs.writeFileSync(distIndexPath, html, 'utf-8');
   }
 
-  // Ensure 404.html is present in dist
+  // Ensure favicons and 404.html are present in root, dist, and docs
   const public404 = path.resolve('public', '404.html');
   const dist404 = path.join(distDir, '404.html');
   if (fs.existsSync(public404) && !fs.existsSync(dist404)) {
     fs.copyFileSync(public404, dist404);
   }
 
+  ['favicon.ico', 'favicon.svg'].forEach((file) => {
+    const src = path.resolve('public', file);
+    const rootDest = path.resolve(file);
+    const distDest = path.join(distDir, file);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, rootDest);
+      if (!fs.existsSync(distDest)) {
+        fs.copyFileSync(src, distDest);
+      }
+    }
+  });
+
   // Synchronize compiled dist/ to docs/ for GitHub Pages compatibility
   if (fs.existsSync(docsDir)) {
     fs.rmSync(docsDir, { recursive: true, force: true });
   }
   fs.cpSync(distDir, docsDir, { recursive: true });
-  console.log('✓ Successfully synchronized dist/ to docs/ for GitHub Pages compatibility.');
+  console.log('✓ Successfully synchronized dist/ to docs/ and root favicons.');
 }
