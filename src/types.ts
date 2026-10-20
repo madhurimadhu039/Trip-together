@@ -1,15 +1,111 @@
 import type { PopularDestination } from './data/popularDestinations';
+export type { PopularDestination };
 
 export type NavSection =
+  | 'home'
   | 'dashboard'
+  | 'destinations'
+  | 'packages'
+  | 'guides'
+  | 'planner'
+  | 'builder'
   | 'transport'
   | 'hotels'
-  | 'packages'
-  | 'builder'
   | 'tracking'
   | 'chat'
   | 'checklist'
-  | 'budget';
+  | 'budget'
+  | 'guide-dashboard'
+  | 'traveller-dashboard'
+  | 'admin';
+
+export interface DestinationItem {
+  id: string;
+  name: string;
+  fullName: string;
+  state: string;
+  country: string;
+  category: string;
+  badge: string;
+  image: string;
+  description: string;
+  popularAttractions: string[];
+  bestSeason: string;
+  approxNightBudget: string;
+  published?: boolean;
+  featured?: boolean;
+}
+
+export interface PackageItem {
+  id: string;
+  title: string;
+  destination: string;
+  destinationId: string;
+  duration: string;
+  days: number;
+  nights: number;
+  pricePerPerson: number;
+  originalPrice?: number;
+  category: string;
+  coverImage: string;
+  highlights: string[];
+  inclusions: string[];
+  exclusions: string[];
+  dayByDayItinerary: { day: number; title: string; desc: string }[];
+  providerName: string;
+  cancellationPolicy: string;
+  published?: boolean;
+  featured?: boolean;
+}
+
+export interface LocalGuideItem {
+  id: string;
+  name: string;
+  serviceLocation: string;
+  state: string;
+  languages: string[];
+  specialties: string[];
+  experienceYears: number;
+  dailyRate: number;
+  hourlyRate?: number;
+  avatar: string;
+  bio: string;
+  verificationStatus: 'verified' | 'pending' | 'rejected';
+  verificationDoc?: string;
+  rating: number;
+  reviewCount: number;
+  phone?: string;
+  email?: string;
+  availability: string;
+}
+
+export interface PlatformReviewItem {
+  id: string;
+  authorName: string;
+  location: string;
+  targetType: string;
+  targetTitle: string;
+  rating: number;
+  comment: string;
+  date: string;
+  status: 'approved' | 'pending';
+}
+
+export interface BookingSubmission {
+  packageId?: string;
+  packageTitle: string;
+  destination: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  travelDate: string;
+  adults: number;
+  children: number;
+  seniors: number;
+  totalTravellers: number;
+  totalAmount: number;
+  specialRequests?: string;
+}
 
 export interface TripParams {
   origin: string;
@@ -303,3 +399,81 @@ export interface ProviderAdapterStatus {
   officialPortalUrl: string;
   complianceNote: string;
 }
+
+export interface SavedTripRecord {
+  id: string;
+  userId: string;
+  title: string;
+  destination: string;
+  travelDate: string;
+  travellers: number;
+  budget: number;
+  itinerary: any[];
+  notes?: string;
+  updatedAt: string;
+}
+
+export interface BookingRecordItem {
+  id: string;
+  bookingRef: string;
+  packageId?: string;
+  packageTitle: string;
+  destination: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  travelDate: string;
+  adults: number;
+  children: number;
+  seniors: number;
+  totalTravellers: number;
+  totalAmount: number;
+  specialRequests?: string;
+  status: 'confirmed' | 'pending' | 'cancelled';
+  createdAt: string;
+}
+
+export interface GuideEnquiryItem {
+  id: string;
+  enquiryRef: string;
+  guideId: string;
+  guideName: string;
+  senderName: string;
+  senderEmail: string;
+  senderPhone: string;
+  requestedDate: string;
+  groupSize: number;
+  message: string;
+  status: 'pending' | 'replied' | 'closed';
+  replyMessage?: string;
+  repliedAt?: string;
+  createdAt: string;
+}
+
+export interface ContactTicketItem {
+  id: string;
+  ticketRef: string;
+  name: string;
+  email: string;
+  subject: string;
+  category: string;
+  message: string;
+  status: 'open' | 'resolved';
+  createdAt: string;
+}
+
+export interface AdminOverviewStats {
+  totalUsers: number;
+  totalDestinations: number;
+  totalPackages: number;
+  totalGuides: number;
+  verifiedGuides: number;
+  pendingGuideVerifications: number;
+  totalBookings: number;
+  activeBookings: number;
+  totalEnquiries: number;
+  totalReviews: number;
+  totalRevenue: number;
+  serverTime: string;
+}
+

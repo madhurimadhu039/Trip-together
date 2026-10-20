@@ -448,102 +448,240 @@ const RAW_DESTINATIONS: Omit<PopularDestination, 'country'>[] = [
       'telangana',
     ],
   },
+  {
+    id: 'dest-bangalore',
+    name: 'Bangalore',
+    fullName: 'Bangalore (Bengaluru), Karnataka',
+    state: 'Karnataka',
+    category: 'Heritage & Culture',
+    badge: 'Silicon Valley & Garden City',
+    popularAttractions: 'Lalbagh Botanical Garden, Bangalore Palace, Cubbon Park, ISKCON Temple, Bannerghatta Park',
+    bestSeason: 'All Year Round',
+    approxNightBudget: '₹1,500 – ₹4,500',
+    aliases: [
+      'bangalore',
+      'bengaluru',
+      'blr',
+      'karnataka',
+      'garden city',
+      'silicon valley',
+    ],
+  },
+  {
+    id: 'dest-bali',
+    name: 'Bali',
+    fullName: 'Bali, Indonesia',
+    state: 'Bali Province',
+    category: 'Coastal & Beach',
+    badge: 'Island of the Gods',
+    popularAttractions: 'Uluwatu Temple, Tanah Lot, Ubud Monkey Forest, Tegallalang Rice Terraces, Seminyak Beach',
+    bestSeason: 'Apr – Oct',
+    approxNightBudget: '₹2,500 – ₹7,500',
+    aliases: ['bali', 'ubud', 'denpasar', 'kuta', 'indonesia'],
+  },
+  {
+    id: 'dest-bangkok',
+    name: 'Bangkok',
+    fullName: 'Bangkok, Thailand',
+    state: 'Bangkok',
+    category: 'Heritage & Culture',
+    badge: 'Vibrant City of Temples',
+    popularAttractions: 'Grand Palace, Wat Arun, Wat Phra Kaew, Chatuchak Market, Chao Phraya River',
+    bestSeason: 'Nov – Feb',
+    approxNightBudget: '₹2,000 – ₹6,000',
+    aliases: ['bangkok', 'thailand', 'bkk', 'wat arun'],
+  },
+  {
+    id: 'dest-kolkata',
+    name: 'Kolkata',
+    fullName: 'Kolkata (Calcutta), West Bengal',
+    state: 'West Bengal',
+    category: 'Heritage & Culture',
+    badge: 'City of Joy & Architecture',
+    popularAttractions: 'Victoria Memorial, Howrah Bridge, Dakshineswar Kali Temple, Indian Museum, Park Street',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,200 – ₹3,800',
+    aliases: ['kolkata', 'calcutta', 'howrah', 'west bengal'],
+  },
+  {
+    id: 'dest-kathmandu',
+    name: 'Kathmandu',
+    fullName: 'Kathmandu, Nepal',
+    state: 'Bagmati Province',
+    category: 'Heritage & Culture',
+    badge: 'Himalayan Spiritual Valley',
+    popularAttractions: 'Pashupatinath Temple, Boudhanath Stupa, Swayambhunath (Monkey Temple), Kathmandu Durbar Square',
+    bestSeason: 'Sep – Nov & Mar – May',
+    approxNightBudget: '₹1,200 – ₹3,500',
+    aliases: ['kathmandu', 'nepal', 'pashupatinath', 'boudha'],
+  },
+  {
+    id: 'dest-mumbai',
+    name: 'Mumbai',
+    fullName: 'Mumbai (Bombay), Maharashtra',
+    state: 'Maharashtra',
+    category: 'Heritage & Culture',
+    badge: 'City of Dreams & Coastal Gateway',
+    popularAttractions: 'Gateway of India, Marine Drive Queen’s Necklace, Elephanta Caves, Siddhivinayak Temple, Bandra',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹2,200 – ₹6,500',
+    aliases: ['mumbai', 'bombay', 'marine drive', 'maharashtra'],
+  },
+  {
+    id: 'dest-delhi',
+    name: 'Delhi',
+    fullName: 'New Delhi & Old Delhi, NCR',
+    state: 'Delhi',
+    category: 'Heritage & Culture',
+    badge: 'National Capital Heritage',
+    popularAttractions: 'India Gate, Qutub Minar, Red Fort, Lotus Temple, Akshardham, Humayun’s Tomb',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,500 – ₹5,000',
+    aliases: ['delhi', 'new delhi', 'ncr', 'red fort'],
+  },
+  {
+    id: 'dest-chennai',
+    name: 'Chennai',
+    fullName: 'Chennai (Madras), Tamil Nadu',
+    state: 'Tamil Nadu',
+    category: 'Coastal & Beach',
+    badge: 'Cultural Gateway of South',
+    popularAttractions: 'Marina Beach, Kapaleeshwarar Temple, San Thome Basilica, Fort St. George, Mahabalipuram nearby',
+    bestSeason: 'Nov – Feb',
+    approxNightBudget: '₹1,400 – ₹4,000',
+    aliases: ['chennai', 'madras', 'marina beach', 'tamil nadu'],
+  },
+  {
+    id: 'dest-kerala',
+    name: 'Kerala',
+    fullName: 'Kerala Backwaters & Hill Stations',
+    state: 'Kerala',
+    category: 'Nature & Wildlife',
+    badge: "God's Own Country",
+    popularAttractions: 'Alleppey Backwaters, Munnar Tea Gardens, Thekkady Periyar Wildlife, Kovalam Beach',
+    bestSeason: 'Sep – Mar',
+    approxNightBudget: '₹2,200 – ₹6,000',
+    aliases: ['kerala', 'gods own country', 'backwaters'],
+  },
+  {
+    id: 'dest-manali',
+    name: 'Manali',
+    fullName: 'Manali, Himachal Pradesh',
+    state: 'Himachal Pradesh',
+    category: 'Hill Station',
+    badge: 'Himalayan Snow Valley',
+    popularAttractions: 'Solang Valley, Rohtang Pass, Hadimba Temple, Old Manali Cafes, Jogini Waterfall',
+    bestSeason: 'Mar – Jun & Oct – Feb',
+    approxNightBudget: '₹1,500 – ₹4,500',
+    aliases: ['manali', 'rohtang', 'solang', 'himachal'],
+  },
+  {
+    id: 'dest-ladakh',
+    name: 'Leh Ladakh',
+    fullName: 'Leh, Ladakh',
+    state: 'Ladakh',
+    category: 'Hill Station',
+    badge: 'High-Altitude Himalayan Wonder',
+    popularAttractions: 'Pangong Tso Lake, Nubra Valley, Khardung La Pass, Thiksey Monastery, Magnetic Hill',
+    bestSeason: 'May – Sep',
+    approxNightBudget: '₹2,500 – ₹7,000',
+    aliases: ['ladakh', 'leh', 'pangong', 'nubra'],
+  },
+  {
+    id: 'dest-agra',
+    name: 'Agra',
+    fullName: 'Agra, Uttar Pradesh',
+    state: 'Uttar Pradesh',
+    category: 'Heritage & Culture',
+    badge: 'Symbol of Eternal Love',
+    popularAttractions: 'Taj Mahal, Agra Fort, Fatehpur Sikri, Mehtab Bagh, Itmad-ud-Daulah',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,200 – ₹4,000',
+    aliases: ['agra', 'taj mahal', 'fatehpur sikri'],
+  },
+  {
+    id: 'dest-amritsar',
+    name: 'Amritsar',
+    fullName: 'Amritsar, Punjab',
+    state: 'Punjab',
+    category: 'Pilgrimage',
+    badge: 'Golden Temple Heritage',
+    popularAttractions: 'Sri Harmandir Sahib (Golden Temple), Wagah Border Ceremony, Jallianwala Bagh, Gobindgarh Fort',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,100 – ₹3,500',
+    aliases: ['amritsar', 'golden temple', 'wagah border', 'punjab'],
+  },
+  {
+    id: 'dest-shimla',
+    name: 'Shimla',
+    fullName: 'Shimla, Himachal Pradesh',
+    state: 'Himachal Pradesh',
+    category: 'Hill Station',
+    badge: 'Queen of the Hills',
+    popularAttractions: 'The Ridge, Mall Road, Jakhoo Temple, Kalka-Shimla Toy Train, Kufri Snow View',
+    bestSeason: 'Mar – Jun & Nov – Feb',
+    approxNightBudget: '₹1,800 – ₹5,000',
+    aliases: ['shimla', 'kufri', 'mall road', 'himachal'],
+  },
 ];
 
 export const POPULAR_DESTINATIONS: PopularDestination[] = RAW_DESTINATIONS.map((d) => ({
-  country: 'India',
+  country: d.id === 'dest-bali' ? 'Indonesia' : d.id === 'dest-bangkok' ? 'Thailand' : d.id === 'dest-kathmandu' ? 'Nepal' : 'India',
   ...d,
 }));
 
 /**
- * Filter destinations based on user input query.
- * Matches by name, full name, state, country, category, popular attractions, and aliases.
- * Returns empty array when query is empty.
+ * Filter destinations based on user input query using precise prefix matching.
+ * 
+ * Rules:
+ * 1. When query is empty: returns sensible default popular destinations.
+ * 2. When query is non-empty: strictly matches destination.name.toLowerCase().startsWith(cleanQuery).
+ *    Never displays destinations beginning with unrelated letters (e.g. typing 'K' will only
+ *    match destinations starting with K such as Kakinada, Kolkata, Kochi, Kathmandu).
+ * 3. Case-insensitive and trimmed.
  */
 export function getRecommendedDestinations(query: string, maxResults = 8): PopularDestination[] {
   const clean = query.trim().toLowerCase();
 
-  // If query is empty, do not display any destination suggestions
+  // 1. If query is empty, return curated default popular destinations
   if (!clean) {
-    return [];
+    const defaultIds = [
+      'dest-tirupati',
+      'dest-bangalore',
+      'dest-goa',
+      'dest-jaipur',
+      'dest-kerala',
+      'dest-manali',
+      'dest-mumbai',
+      'dest-varanasi',
+    ];
+    return POPULAR_DESTINATIONS.filter((d) => defaultIds.includes(d.id)).slice(0, maxResults);
   }
 
-  // Exact prefix matches on name or aliases get the highest priority
-  const scored = POPULAR_DESTINATIONS.map((dest) => {
-    let score = 0;
-    const nameLower = dest.name.toLowerCase();
-    const fullNameLower = dest.fullName.toLowerCase();
-    const stateLower = dest.state.toLowerCase();
-    const countryLower = (dest.country || 'India').toLowerCase();
-    const catLower = dest.category.toLowerCase();
-    const attractionsLower = dest.popularAttractions.toLowerCase();
+  // 2. Strict prefix match against destination name as required
+  const prefixMatches = POPULAR_DESTINATIONS.filter((dest) =>
+    dest.name.toLowerCase().startsWith(clean)
+  );
 
-    // 1. Direct name match gets highest priority
-    if (nameLower === clean) {
-      score += 350;
-    } else if (nameLower.startsWith(clean)) {
-      // Prefix match on name: shorter names rank higher (e.g. "Ti" -> "Tirupati" before "Tiruchirappalli")
-      score += 220 + Math.max(0, 30 - (nameLower.length - clean.length));
-    } else if (nameLower.includes(clean)) {
-      score += 70;
-    }
+  // 3. For queries >= 3 chars, also include destinations where a primary alias starts with prefix
+  let combined = prefixMatches;
+  if (clean.length >= 3 && prefixMatches.length < maxResults) {
+    const aliasMatches = POPULAR_DESTINATIONS.filter(
+      (dest) =>
+        !prefixMatches.some((p) => p.id === dest.id) &&
+        dest.aliases.some((a) => a.toLowerCase().startsWith(clean))
+    );
+    combined = [...prefixMatches, ...aliasMatches];
+  }
 
-    // Top primary destination priority boost (e.g. Tirupati)
-    if (dest.id === 'dest-tirupati' && (nameLower.includes(clean) || dest.aliases.some(a => a.startsWith(clean)))) {
-      score += 35;
-    }
-
-    // 2. Prefix or inclusion in aliases (if not already exact name match)
-    for (const alias of dest.aliases) {
-      if (alias === clean) {
-        score += 120;
-        break;
-      } else if (alias.startsWith(clean)) {
-        score += 80;
-        break;
-      } else if (alias.includes(clean)) {
-        score += 30;
-        break;
-      }
-    }
-
-    // 3. Match on full name
-    if (fullNameLower.startsWith(clean)) {
-      score += 50;
-    } else if (fullNameLower.includes(clean)) {
-      score += 25;
-    }
-
-    // 4. Match on state (only adds secondary weight when city name doesn't already start with query)
-    if (!nameLower.startsWith(clean)) {
-      if (stateLower.startsWith(clean)) {
-        score += 45;
-      } else if (stateLower.includes(clean)) {
-        score += 20;
-      }
-    }
-
-    // 5. Match on country (e.g. "india")
-    if (countryLower.startsWith(clean)) {
-      score += 15;
-    }
-
-    // 6. Match on category
-    if (catLower.includes(clean)) {
-      score += 15;
-    }
-
-    // 7. Match on attractions
-    if (attractionsLower.includes(clean)) {
-      score += 10;
-    }
-
-    return { dest, score };
-  });
-
-  return scored
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, maxResults)
-    .map((item) => item.dest);
+  // 4. Sort: exact match first, then alphabetical
+  return combined
+    .sort((a, b) => {
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+      if (aName === clean && bName !== clean) return -1;
+      if (bName === clean && aName !== clean) return 1;
+      return aName.localeCompare(bName);
+    })
+    .slice(0, maxResults);
 }

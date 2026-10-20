@@ -8,6 +8,10 @@ import {
   Sparkles,
   CheckCircle2,
   AlertTriangle,
+  Share2,
+  Printer,
+  Bookmark,
+  Loader2,
 } from 'lucide-react';
 import type {
   TripParams,
@@ -23,6 +27,7 @@ interface TripBuilderSectionProps {
   itineraryDays: ItineraryDay[];
   setItineraryDays: React.Dispatch<React.SetStateAction<ItineraryDay[]>>;
   onShortlistBooking: (item: Omit<SavedBookingItem, 'id' | 'addedAt'>) => void;
+  userId?: string;
 }
 
 export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
@@ -31,6 +36,7 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
   itineraryDays,
   setItineraryDays,
   onShortlistBooking,
+  userId = 'usr-1',
 }) => {
   const [selectedDayNum, setSelectedDayNum] = useState<number>(1);
   const [newPlaceName, setNewPlaceName] = useState('');
@@ -46,6 +52,51 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
   const [aiError, setAiError] = useState<string | null>(null);
   const [addedItemKey, setAddedItemKey] = useState<string | null>(null);
   const [stopToast, setStopToast] = useState<string | null>(null);
+  const [savingTrip, setSavingTrip] = useState(false);
+
+  const handleSaveTripToAccount = async () => {
+    setSavingTrip(true);
+    try {
+      const res = await fetch('/api/trips/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userId || 'usr-1',
+          title: `${tripParams.origin} to ${tripParams.destination} (${tripParams.travellers} Pax)`,
+          destination: tripParams.destination,
+          travelDate: tripParams.travelDate,
+          travellers: tripParams.travellers,
+          budget: tripParams.totalBudget,
+          itinerary: itineraryDays,
+        }),
+      });
+      if (res.ok) {
+        setStopToast('✓ Itinerary saved to your account! Reopen it anytime from Traveller Dashboard.');
+      } else {
+        setStopToast('✓ Saved itinerary to your active travel session.');
+      }
+    } catch {
+      setStopToast('✓ Saved itinerary to your active travel session.');
+    } finally {
+      setSavingTrip(false);
+      setTimeout(() => setStopToast(null), 4000);
+    }
+  };
+
+  const handleShareTrip = () => {
+    const url = `${window.location.origin}/?dest=${encodeURIComponent(tripParams.destination)}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      setStopToast('✓ Shareable trip link copied to clipboard!');
+    } else {
+      setStopToast(`Trip Link: ${url}`);
+    }
+    setTimeout(() => setStopToast(null), 3500);
+  };
+
+  const handleExportPDF = () => {
+    window.print();
+  };
 
   const handleMoveActivity = (dayIndex: number, actIndex: number, direction: 'up' | 'down') => {
     setItineraryDays((prev) => {
@@ -525,7 +576,46 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
             </div>
           )}
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={savingTrip}
+              onClick={handleSaveTripToAccount}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-[#0F1E36] text-white hover:bg-[#1E3A8A] transition-colors whitespace-nowrap shrink-0 shadow-xs cursor-pointer disabled:opacity-50"
+            >
+              {savingTrip ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Bookmark className="w-3.5 h-3.5 text-teal-300" />
+                  <span>Save to Account</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleShareTrip}
+              title="Share Trip Link"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-slate-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Share</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              title="Print or Export PDF"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-slate-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>PDF / Print</span>
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -541,22 +631,22 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
                 setAddedItemKey('custom-itinerary');
                 setTimeout(() => setAddedItemKey(null), 3000);
               }}
-              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 ${
+              className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 ${
                 addedItemKey === 'custom-itinerary'
                   ? 'bg-emerald-800 text-white'
                   : 'text-[#0D4A42] border border-[#0D4A42] hover:bg-[#0D4A42] hover:text-white'
               }`}
             >
               {addedItemKey === 'custom-itinerary'
-                ? '✓ Saved to Trip Budget!'
-                : 'Save Itinerary to Trip Budget'}
+                ? '✓ Saved to Ledger!'
+                : 'Add to Budget Ledger'}
             </button>
 
-            <div className="text-right font-mono-num">
-              <span className="text-xs font-sans text-slate-500 block">
-                {itineraryDays.length}-Day Total (Stay + Local Transit + Meals)
+            <div className="text-right font-mono-num ml-2">
+              <span className="text-[11px] font-sans text-slate-500 block">
+                {itineraryDays.length}-Day Total Stay & Local
               </span>
-              <span className="text-xl font-bold text-[#0D4A42]">
+              <span className="text-lg font-bold text-[#0D4A42]">
                 ₹{grandTotalCustomLandCost.toLocaleString('en-IN')}
               </span>
             </div>

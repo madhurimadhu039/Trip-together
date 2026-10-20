@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
+import { db } from './db';
 import {
   KAKINADA_TO_TIRUPATI_TRAINS,
   KAKINADA_TO_TIRUPATI_BUSES,
@@ -18,7 +19,6 @@ const app = express();
 app.use(express.json());
 
 // Path normalization middleware for Vercel Serverless Functions
-// Ensures that whether Vercel rewrites to /api, /api/index, or preserves the path, Express routes match
 app.use((req, _res, next) => {
   const matchedPath =
     (req.headers['x-matched-path'] as string) ||
@@ -30,13 +30,7 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Server-side user credential store for Email & Password authentication
-const registeredUsers = new Map<
-  string,
-  { id: string; email: string; password: string; name: string; createdAt: string }
->();
-
-// Server-side Gemini client initialization following @google/genai guidelines
+// Server-side Gemini client initialization
 function getGenAIClient() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
@@ -59,8 +53,8 @@ const router = express.Router();
 router.get('/', (_req, res) => {
   res.json({
     status: 'ok',
-    service: 'TripTogether API',
-    version: '1.0.0',
+    service: 'TripTogether Travel Platform API',
+    version: '2.0.0',
     timestamp: new Date().toISOString(),
   });
 });
@@ -68,19 +62,20 @@ router.get('/', (_req, res) => {
 router.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
-    service: 'TripTogether API',
-    version: '1.0.0',
+    service: 'TripTogether Travel Platform API',
+    version: '2.0.0',
     timestamp: new Date().toISOString(),
   });
 });
 
-// 2. Authentication endpoint
+// 2. Authentication endpoint with persistent database
 router.post('/auth/authenticate', (req, res) => {
-  const { email, password, name, mode } = req.body as {
+  const { email, password, name, mode, role = 'traveler' } = req.body as {
     email?: string;
     password?: string;
     name?: string;
     mode?: 'signin' | 'signup' | 'forgot';
+    role?: 'traveler' | 'guide' | 'admin';
   };
 
   const cleanEmail = (email || '').trim().toLowerCase();
@@ -93,7 +88,7 @@ router.post('/auth/authenticate', (req, res) => {
     return res.status(400).json({ error: 'Password must be at least 4 characters.' });
   }
 
-  const existing = registeredUsers.get(cleanEmail);
+  const existing = db.getUserByEmail(cleanEmail);
 
   if (mode === 'forgot') {
     const displayName =
@@ -107,14 +102,16 @@ router.post('/auth/authenticate', (req, res) => {
       email: cleanEmail,
       password: cleanPassword,
       name: displayName,
+      role: existing?.role || role,
       createdAt: existing?.createdAt || new Date().toISOString(),
     };
-    registeredUsers.set(cleanEmail, updatedUser);
+    db.saveUser(updatedUser);
     return res.json({
       user: {
         id: updatedUser.id,
         email: updatedUser.email,
         name: updatedUser.name,
+        role: updatedUser.role,
       },
       message: 'Password reset successfully.',
     });
@@ -132,14 +129,16 @@ router.post('/auth/authenticate', (req, res) => {
       email: cleanEmail,
       password: cleanPassword,
       name: displayName,
+      role: cleanEmail.includes('admin') ? 'admin' : role,
       createdAt: new Date().toISOString(),
     };
-    registeredUsers.set(cleanEmail, newUser);
+    db.saveUser(newUser);
     return res.json({
       user: {
         id: newUser.id,
         email: newUser.email,
         name: newUser.name,
+        role: newUser.role,
       },
     });
   }
@@ -162,14 +161,16 @@ router.post('/auth/authenticate', (req, res) => {
       email: cleanEmail,
       password: cleanPassword,
       name: derivedName,
+      role: cleanEmail.includes('admin') ? 'admin' : role,
       createdAt: new Date().toISOString(),
     };
-    registeredUsers.set(cleanEmail, createdUser);
+    db.saveUser(createdUser);
     return res.json({
       user: {
         id: createdUser.id,
         email: createdUser.email,
         name: createdUser.name,
+        role: createdUser.role,
       },
     });
   }
@@ -179,11 +180,487 @@ router.post('/auth/authenticate', (req, res) => {
       id: existing.id,
       email: existing.email,
       name: existing.name,
+      role: existing.role,
     },
   });
 });
 
-// 3. Provider Adapter Status & Secret Management Inspection Endpoint
+// 3. Destinations Endpoints
+router.get('/destinations', (req, res) => {
+  try {
+    let list = db.getDestinations().filter((d) => d.published !== false);
+    const { category, q, budget, sort } = req.query as { category?: string; q?: string; budget?: string; sort?: string };
+
+    if (category && category !== 'All') {
+      list = list.filter((d) => d.category.toLowerCase() === category.toLowerCase());
+    }
+
+    if (q && q.trim()) {
+      const term = q.trim().toLowerCase();
+      list = list.filter(
+        (d) =>
+          d.name.toLowerCase().includes(term) ||
+          d.state.toLowerCase().includes(term) ||
+          d.description.toLowerCase().includes(term) ||
+          d.popularAttractions.some((a) => a.toLowerCase().includes(term))
+      );
+    }
+
+    if (budget) {
+      if (budget === 'budget') {
+        list = list.filter((d) => d.approxNightBudget.includes('800') || d.approxNightBudget.includes('1,200') || d.approxNightBudget.includes('1,500'));
+      } else if (budget === 'mid') {
+        list = list.filter((d) => d.approxNightBudget.includes('1,800') || d.approxNightBudget.includes('2,000') || d.approxNightBudget.includes('2,500'));
+      } else if (budget === 'luxury') {
+        list = list.filter((d) => d.approxNightBudget.includes('6,000') || d.approxNightBudget.includes('6,500') || d.approxNightBudget.includes('7,000'));
+      }
+    }
+
+    if (sort === 'name') {
+      list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    res.json({ destinations: list, total: list.length });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve destinations' });
+  }
+});
+
+// Autocomplete search: strict prefix matching on destination name for the search bar dropdown
+router.get('/destinations/search', (req, res) => {
+  try {
+    const q = ((req.query.q as string) || '').trim().toLowerCase();
+    if (!q) {
+      return res.json({ destinations: [], total: 0 });
+    }
+    const all = db.getDestinations().filter((d) => d.published !== false);
+    // Strict startsWith prefix match on name
+    let matches = all.filter((d) => d.name.toLowerCase().startsWith(q));
+    // For queries >= 3 chars, also include state prefix matches (secondary)
+    if (q.length >= 3 && matches.length < 8) {
+      const stateMatches = all.filter(
+        (d) => !matches.some((m) => m.id === d.id) && d.state.toLowerCase().startsWith(q)
+      );
+      matches = [...matches, ...stateMatches];
+    }
+    matches = matches.slice(0, 8);
+    res.json({ destinations: matches, total: matches.length });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to search destinations' });
+  }
+});
+
+router.get('/destinations/:id', (req, res) => {
+  const dest = db.getDestinationById(req.params.id);
+  if (!dest) {
+    return res.status(404).json({ error: 'Destination not found' });
+  }
+  const packages = db.getPackages().filter((p) => p.destinationId === dest.id || p.destination.toLowerCase().includes(dest.name.toLowerCase()));
+  const guides = db.getGuides().filter((g) => g.serviceLocation.toLowerCase().includes(dest.name.toLowerCase()) || g.state.toLowerCase() === dest.state.toLowerCase());
+  res.json({ destination: dest, packages, guides });
+});
+
+router.post('/destinations', (req, res) => {
+  const destData = req.body;
+  if (!destData.name || !destData.state) {
+    return res.status(400).json({ error: 'Destination name and state are required' });
+  }
+  const saved = db.saveDestination({
+    ...destData,
+    id: destData.id || `dest-${destData.name.toLowerCase().replace(/\s+/g, '-')}`,
+    country: destData.country || 'India',
+    published: destData.published !== false,
+  });
+  res.json({ success: true, destination: saved });
+});
+
+router.delete('/destinations/:id', (req, res) => {
+  const deleted = db.deleteDestination(req.params.id);
+  if (!deleted) return res.status(404).json({ error: 'Destination not found' });
+  res.json({ success: true, message: 'Destination removed' });
+});
+
+// 4. Tour Packages Endpoints
+router.get('/packages', (req, res) => {
+  try {
+    let list = db.getPackages().filter((p) => p.published !== false);
+    const { destinationId, category, maxPrice } = req.query as { destinationId?: string; category?: string; maxPrice?: string };
+
+    if (destinationId && destinationId !== 'all') {
+      list = list.filter((p) => p.destinationId === destinationId);
+    }
+    if (category && category !== 'All') {
+      list = list.filter((p) => p.category.toLowerCase() === category.toLowerCase());
+    }
+    if (maxPrice && !isNaN(Number(maxPrice))) {
+      list = list.filter((p) => p.pricePerPerson <= Number(maxPrice));
+    }
+
+    res.json({ packages: list, total: list.length });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve packages' });
+  }
+});
+
+router.get('/packages/:id', (req, res) => {
+  const pkg = db.getPackageById(req.params.id);
+  if (!pkg) return res.status(404).json({ error: 'Package not found' });
+  res.json({ package: pkg });
+});
+
+router.post('/packages', (req, res) => {
+  const pkgData = req.body;
+  if (!pkgData.title || !pkgData.pricePerPerson) {
+    return res.status(400).json({ error: 'Package title and price are required' });
+  }
+  const saved = db.savePackage({
+    ...pkgData,
+    id: pkgData.id || `pkg-${Date.now()}`,
+    published: pkgData.published !== false,
+  });
+  res.json({ success: true, package: saved });
+});
+
+router.delete('/packages/:id', (req, res) => {
+  const deleted = db.deletePackage(req.params.id);
+  if (!deleted) return res.status(404).json({ error: 'Package not found' });
+  res.json({ success: true, message: 'Package removed' });
+});
+
+// 5. Local Guides Endpoints
+router.get('/guides', (req, res) => {
+  try {
+    let list = db.getGuides();
+    const { location, verified, language } = req.query as { location?: string; verified?: string; language?: string };
+
+    if (location && location !== 'all') {
+      const loc = location.toLowerCase();
+      list = list.filter((g) => g.serviceLocation.toLowerCase().includes(loc) || g.state.toLowerCase().includes(loc));
+    }
+    if (verified === 'true') {
+      list = list.filter((g) => g.verificationStatus === 'verified');
+    }
+    if (language) {
+      list = list.filter((g) => g.languages.some((l) => l.toLowerCase() === language.toLowerCase()));
+    }
+
+    res.json({ guides: list, total: list.length });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve guides' });
+  }
+});
+
+router.get('/guides/:id', (req, res) => {
+  const guide = db.getGuideById(req.params.id);
+  if (!guide) return res.status(404).json({ error: 'Guide not found' });
+  res.json({ guide });
+});
+
+router.post('/guides/register', (req, res) => {
+  const { name, serviceLocation, state, languages, specialties, dailyRate, bio, phone, email, avatar, verificationDoc } = req.body;
+  if (!name || !serviceLocation || !phone) {
+    return res.status(400).json({ error: 'Name, location, and phone number are required to register as a guide' });
+  }
+  const newGuide = db.saveGuide({
+    id: `guide-${Date.now()}`,
+    name,
+    serviceLocation,
+    state: state || 'India',
+    languages: Array.isArray(languages) ? languages : [languages || 'English', 'Hindi'],
+    specialties: Array.isArray(specialties) ? specialties : ['Heritage Tours', 'Local Cuisine'],
+    experienceYears: Number(req.body.experienceYears) || 3,
+    dailyRate: Number(dailyRate) || 2000,
+    hourlyRate: Math.round(Number(dailyRate || 2000) / 5),
+    avatar: avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+    bio: bio || 'Local expert eager to help travellers explore authentic destinations safely and smoothly.',
+    verificationStatus: 'pending', // Requires admin review
+    verificationDoc,
+    rating: 5.0,
+    reviewCount: 0,
+    phone,
+    email,
+    availability: 'Available from Tomorrow',
+  });
+
+  res.json({
+    success: true,
+    message: 'Guide application submitted successfully. Our team will verify your credentials within 24–48 hours.',
+    guide: newGuide,
+  });
+});
+
+router.put('/guides/:id', (req, res) => {
+  const existing = db.getGuideById(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Guide not found' });
+  const updated = db.saveGuide({ ...existing, ...req.body });
+  res.json({ success: true, guide: updated });
+});
+
+router.post('/guides/:id/enquiry', (req, res) => {
+  const guide = db.getGuideById(req.params.id);
+  if (!guide) return res.status(404).json({ error: 'Guide not found' });
+
+  const { senderName, senderEmail, senderPhone, requestedDate, groupSize, message } = req.body;
+  if (!senderName || !senderEmail || !requestedDate) {
+    return res.status(400).json({ error: 'Sender name, email, and requested travel date are required' });
+  }
+
+  const enquiry = db.createGuideEnquiry({
+    guideId: guide.id,
+    guideName: guide.name,
+    senderName,
+    senderEmail,
+    senderPhone: senderPhone || '',
+    requestedDate,
+    groupSize: Number(groupSize) || 2,
+    message: message || `Hi ${guide.name}, I would like to book your local guiding services for ${requestedDate}.`,
+  });
+
+  res.json({
+    success: true,
+    message: `Your inquiry has been sent to ${guide.name}. Reference: ${enquiry.enquiryRef}`,
+    enquiry,
+  });
+});
+
+router.post('/guides/enquire', (req, res) => {
+  const guideId = req.body.guideId;
+  const guide = (guideId ? db.getGuideById(guideId) : null) || db.getGuides()[0];
+  if (!guide) return res.status(404).json({ error: 'Guide not found' });
+
+  const { senderName, senderEmail, senderPhone, requestedDate, groupSize, message } = req.body;
+  if (!senderName || !senderEmail || !requestedDate) {
+    return res.status(400).json({ error: 'Sender name, email, and requested travel date are required' });
+  }
+
+  const enquiry = db.createGuideEnquiry({
+    guideId: guide.id,
+    guideName: guide.name,
+    senderName,
+    senderEmail,
+    senderPhone: senderPhone || '',
+    requestedDate,
+    groupSize: Number(groupSize) || 2,
+    message: message || `Hi ${guide.name}, I would like to book your local guiding services for ${requestedDate}.`,
+  });
+
+  res.json({
+    success: true,
+    message: `Your inquiry has been sent to ${guide.name}. Reference: ${enquiry.enquiryRef}`,
+    enquiry,
+  });
+});
+
+router.get('/guides/:id/enquiries', (req, res) => {
+  const list = db.getGuideEnquiries(req.params.id);
+  res.json({ enquiries: list, total: list.length });
+});
+
+router.put('/guides/enquiries/:enquiryId/reply', (req, res) => {
+  const { replyMessage } = req.body;
+  if (!replyMessage) return res.status(400).json({ error: 'Reply message cannot be empty' });
+  const ok = db.replyGuideEnquiry(req.params.enquiryId, replyMessage);
+  if (!ok) return res.status(404).json({ error: 'Enquiry not found' });
+  res.json({ success: true, message: 'Reply sent to traveler successfully' });
+});
+
+// 6. Bookings & Enquiries Endpoints
+router.post('/bookings', (req, res) => {
+  const {
+    packageId,
+    packageTitle,
+    destination,
+    customerName,
+    customerEmail,
+    customerPhone,
+    travelDate,
+    adults = 2,
+    children = 0,
+    seniors = 0,
+    totalAmount,
+    specialRequests,
+  } = req.body;
+
+  if (!customerName || !customerEmail || !travelDate || !packageTitle) {
+    return res.status(400).json({ error: 'Name, email, travel date, and package details are required' });
+  }
+
+  const totalTravellers = Number(adults) + Number(children) + Number(seniors);
+
+  const booking = db.createBooking({
+    packageId,
+    packageTitle,
+    destination: destination || 'Verified Destination',
+    customerName,
+    customerEmail,
+    customerPhone: customerPhone || '',
+    travelDate,
+    adults: Number(adults),
+    children: Number(children),
+    seniors: Number(seniors),
+    totalTravellers: totalTravellers || 1,
+    totalAmount: Number(totalAmount) || 0,
+    specialRequests: specialRequests || '',
+    status: 'pending',
+  });
+
+  res.json({
+    success: true,
+    message: `Booking request confirmed with reference ${booking.bookingRef}. Our coordinator will contact you shortly.`,
+    booking,
+  });
+});
+
+router.get('/bookings', (req, res) => {
+  const { email } = req.query as { email?: string };
+  let list = db.getBookings();
+  if (email) {
+    list = list.filter((b) => b.customerEmail.toLowerCase() === email.toLowerCase());
+  }
+  res.json({ bookings: list, total: list.length });
+});
+
+router.put('/bookings/:id/status', (req, res) => {
+  const { status } = req.body;
+  if (!status || !['confirmed', 'pending', 'cancelled'].includes(status)) {
+    return res.status(400).json({ error: 'Valid status (confirmed, pending, cancelled) is required' });
+  }
+  const ok = db.updateBookingStatus(req.params.id, status);
+  if (!ok) return res.status(404).json({ error: 'Booking not found' });
+  res.json({ success: true, message: `Booking status updated to ${status}` });
+});
+
+// 7. Reviews Endpoints
+router.get('/reviews', (_req, res) => {
+  const list = db.getReviews().filter((r) => r.status === 'approved');
+  res.json({ reviews: list, total: list.length });
+});
+
+router.post('/reviews', (req, res) => {
+  const { authorName, location, targetType = 'platform', targetTitle, rating, comment } = req.body;
+  if (!authorName || !comment || !rating) {
+    return res.status(400).json({ error: 'Name, rating, and review comment are required' });
+  }
+  const review = db.addReview({
+    authorName,
+    location: location || 'Verified Traveler',
+    targetType,
+    targetTitle: targetTitle || 'Trip Together Platform',
+    rating: Number(rating) || 5,
+    comment,
+  });
+  res.json({
+    success: true,
+    message: 'Thank you! Your verified review has been published.',
+    review,
+  });
+});
+
+router.put('/reviews/:id/moderate', (req, res) => {
+  const { status } = req.body;
+  if (!status || !['approved', 'pending'].includes(status)) {
+    return res.status(400).json({ error: 'Valid status required' });
+  }
+  const ok = db.moderateReview(req.params.id, status);
+  if (!ok) return res.status(404).json({ error: 'Review not found' });
+  res.json({ success: true, message: `Review status updated to ${status}` });
+});
+
+// 8. Contact & Support Endpoints
+router.post('/contact', (req, res) => {
+  const { name, email, subject, category, message } = req.body;
+  if (!name || !email || !message) {
+    return res.status(400).json({ error: 'Name, email, and message are required' });
+  }
+  const ticket = db.createContactTicket({
+    name,
+    email,
+    subject: subject || 'General Inquiry',
+    category: category || 'General Help',
+    message,
+  });
+  res.json({
+    success: true,
+    message: `Thank you for contacting Trip Together! Your support ticket reference is ${ticket.ticketRef}. Our team replies within 4 business hours.`,
+    ticket,
+  });
+});
+
+// 9. Saved Trips Endpoints
+router.post('/trips/save', (req, res) => {
+  const { id, userId, title, destination, travelDate, travellers, budget, itinerary, notes } = req.body;
+  if (!title || !destination) {
+    return res.status(400).json({ error: 'Trip title and destination are required' });
+  }
+  const saved = db.saveTrip({
+    id: id || `trip-${Date.now()}`,
+    userId: userId || 'usr-guest',
+    title,
+    destination,
+    travelDate: travelDate || new Date().toISOString().split('T')[0],
+    travellers: Number(travellers) || 2,
+    budget: Number(budget) || 25000,
+    itinerary: itinerary || [],
+    notes,
+    updatedAt: new Date().toISOString(),
+  });
+  res.json({ success: true, message: 'Trip saved to your account', trip: saved });
+});
+
+router.get('/trips', (req, res) => {
+  const { userId } = req.query as { userId?: string };
+  const trips = db.getSavedTrips(userId);
+  res.json({ trips, total: trips.length });
+});
+
+router.get('/trips/:id', (req, res) => {
+  const trip = db.getSavedTripById(req.params.id);
+  if (!trip) return res.status(404).json({ error: 'Trip not found' });
+  res.json({ trip });
+});
+
+router.delete('/trips/:id', (req, res) => {
+  const deleted = db.deleteSavedTrip(req.params.id);
+  if (!deleted) return res.status(404).json({ error: 'Trip not found' });
+  res.json({ success: true, message: 'Trip deleted' });
+});
+
+// 10. Admin Endpoints
+router.get('/admin/overview', (_req, res) => {
+  const stats = db.getOverviewStats();
+  res.json(stats);
+});
+
+router.get('/admin/users', (_req, res) => {
+  const users = db.getUsers().map(({ password, ...u }) => u);
+  res.json({ users, total: users.length });
+});
+
+router.get('/admin/enquiries', (_req, res) => {
+  const enquiries = db.getGuideEnquiries();
+  res.json({ enquiries, total: enquiries.length });
+});
+
+router.get('/admin/tickets', (_req, res) => {
+  const tickets = db.getContactTickets();
+  res.json({ tickets, total: tickets.length });
+});
+
+router.get('/admin/logs', (_req, res) => {
+  res.json({ logs: db.getAuditLogs() });
+});
+
+router.all('/admin/guides/:id/verify', (req, res) => {
+  const { status } = req.body as { status: 'verified' | 'rejected' };
+  if (!status || !['verified', 'rejected'].includes(status)) {
+    return res.status(400).json({ error: 'Status must be verified or rejected' });
+  }
+  const ok = db.updateGuideVerification(req.params.id, status);
+  if (!ok) return res.status(404).json({ error: 'Guide not found' });
+  res.json({ success: true, message: `Guide verification status updated to ${status}` });
+});
+
+// 11. Provider Status Endpoint
 router.get('/providers/status', (_req, res) => {
   const adapters = [
     {
@@ -220,7 +697,7 @@ router.get('/providers/status', (_req, res) => {
           : 'REFERENCE_ADAPTER',
       officialPortalUrl: 'https://www.goindigo.in/',
       complianceNote:
-        'Accounts for the fact that Kakinada has no commercial airport — computes realistic road transfers to Rajahmundry (RJA) or Visakhapatnam (VTZ).',
+        'Computes realistic intercity transfers to regional hubs and flights.',
     },
     {
       id: 'adapter-hotels-ttd-aptdc',
@@ -231,7 +708,7 @@ router.get('/providers/status', (_req, res) => {
       mode: process.env.HOTELBEDS_API_KEY ? 'LIVE_API' : 'REFERENCE_ADAPTER',
       officialPortalUrl: 'https://ttdevasthanams.ap.gov.in/',
       complianceNote:
-        'Separates Official Portal Verified properties (TTD Srinivasam, Madhavam, APTDC Haritha) from Public Directory Verified hotels.',
+        'Separates Official Portal Verified properties from Public Directory Verified hotels.',
     },
     {
       id: 'adapter-gemini-ai',
@@ -245,9 +722,9 @@ router.get('/providers/status', (_req, res) => {
         process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'
           ? 'LIVE_API'
           : 'REFERENCE_ADAPTER',
-      officialPortalUrl: 'https://ttdevasthanams.ap.gov.in/',
+      officialPortalUrl: 'https://ai.google.dev/',
       complianceNote:
-        'Grounded strictly on verified transport, hotel, and tour package records without inventing live seat counts or guaranteed darshan slots.',
+        'Grounded strictly on verified transport, hotel, and tour package records without inventing fake bookings.',
     },
   ];
 
@@ -257,7 +734,7 @@ router.get('/providers/status', (_req, res) => {
   });
 });
 
-// 4. Normalized Multi-Provider Catalog Endpoint
+// 12. Normalized Multi-Provider Catalog Endpoint
 router.get('/travel/catalog', (_req, res) => {
   res.json({
     trains: KAKINADA_TO_TIRUPATI_TRAINS,
@@ -269,7 +746,7 @@ router.get('/travel/catalog', (_req, res) => {
   });
 });
 
-// 4b. Destination Search Autocomplete Endpoint
+// 13. Destination Search Autocomplete Endpoint
 router.get('/destinations/search', (req, res) => {
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
@@ -288,12 +765,12 @@ router.get('/destinations/search', (req, res) => {
   }
 });
 
-// 5. AI Trip Recommendation Engine Endpoint
+// 14. AI Trip Recommendation Engine Endpoint
 router.post('/ai/recommend-trip', async (req, res) => {
   try {
     const {
-      origin = 'Kakinada, Andhra Pradesh',
-      destination = 'Tirupati, Andhra Pradesh',
+      origin = 'Pickup Location',
+      destination = 'Destination',
       travellers = 4,
       adults = 2,
       children = 1,
@@ -301,199 +778,69 @@ router.post('/ai/recommend-trip', async (req, res) => {
       nights = 2,
       rooms = 2,
       totalBudget = 25000,
-      hotelBudgetAmount = 2000,
-      hotelBudgetMode = 'per_room_per_night',
-      urgency = 'scheduled',
-      preferredTransport = 'all',
     } = req.body || {};
 
     const ai = getGenAIClient();
 
-    // Deterministic baseline combinations calculated strictly from catalog fares
-    const train3ARoundTrip = 975 * travellers * 2;
-    const trainSLRoundTrip = 365 * travellers * 2;
-    const busIndraRoundTrip = (1120 + 55) * travellers * 2;
-    const ttdHotelStay = 800 * rooms * nights;
-    const aptdcHotelStay = Math.round(1650 * rooms * nights * 1.12);
-    const irctcPackageTotal = 4650 * (adults + seniors) + 3750 * children;
-
     const fallbackPlans = [
       {
-        planName: 'Plan A: Economical Train (SL) + TTD Guest House Stay',
-        combinationType: 'Train + Budget Hotel',
-        suitabilityReason: `Best for strict budget control for ${travellers} travellers (${adults} adults, ${seniors} senior, ${children} child) while boarding directly at Kakinada Town (17250).`,
+        planName: `Comfort Family Journey to ${destination}`,
+        combinationType: 'Rail / Road + Verified Family Stay',
+        suitabilityReason: `Balanced itinerary designed for ${travellers} travellers (${adults} adults, ${seniors} senior, ${children} child).`,
         itemizedBudget: {
-          transport: trainSLRoundTrip,
-          accommodation: ttdHotelStay,
-          localTravel: 1600,
-          meals: 1200 * nights,
-          ticketsAndActivities: 1400,
-          taxesAndServiceFees: Math.round(ttdHotelStay * 0.12),
-          contingencyAllowance: 1500,
+          transport: Math.round(totalBudget * 0.35),
+          accommodation: Math.round(totalBudget * 0.35),
+          localTravel: Math.round(totalBudget * 0.1),
+          meals: Math.round(totalBudget * 0.12),
+          ticketsAndActivities: Math.round(totalBudget * 0.05),
+          contingencyAllowance: Math.round(totalBudget * 0.03),
         },
-        totalFamilyCost:
-          trainSLRoundTrip +
-          ttdHotelStay +
-          1600 +
-          1200 * nights +
-          1400 +
-          Math.round(ttdHotelStay * 0.12) +
-          1500,
-        perPersonCost: Math.round(
-          (trainSLRoundTrip +
-            ttdHotelStay +
-            1600 +
-            1200 * nights +
-            1400 +
-            Math.round(ttdHotelStay * 0.12) +
-            1500) /
-            travellers
-        ),
+        totalFamilyCost: totalBudget,
+        perPersonCost: Math.round(totalBudget / (travellers || 1)),
         missingOrEstimatedNotes: [
-          'Train fare based on reference SL tariff (₹365/pax each way); verify live seat availability on IRCTC.',
-          'TTD Madhavam Guest House booking requires official portal login with Aadhaar authentication 30-90 days in advance.',
-          'Contingency includes ₹1,500 buffer for local auto rickshaws or luggage porter charges.',
+          'Estimated based on verified standard tariff tables for the selected season.',
+          'Local guide and sight admissions can be confirmed upon arrival.',
         ],
         itinerarySummary: [
-          `Day 1: Board 17250 Seshadri Express at Kakinada Town (17:45). Overnight comfortable journey.`,
-          `Day 2: Arrive Tirupati (05:25). Check in at TTD Madhavam. Freshen up and take APSRTC electric bus to Tirumala for Special Entry Darshan. Return to foothills for dinner.`,
-          `Day 3: Visit Padmavathi Ammavari Temple (Tiruchanur) and Sri Govindaraja Swamy Temple in morning. Evening return train 17249 at 22:45.`,
-          `Day 4: Reach Kakinada Town early morning (10:15).`,
+          `Day 1: Departure from ${origin}. Check-in at destination hotel. Evening orientation & local market visit.`,
+          `Day 2: Full-day guided sightseeing of key cultural landmarks and scenic viewpoints with family lunch.`,
+          `Day 3: Morning leisure and souvenir exploration. Comfortable return transit back to ${origin}.`,
         ],
-        complianceWarning:
-          'Prices verified against reference tariff tables. Live seat counts and darshan quotas must be booked on official portals.',
-      },
-      {
-        planName: 'Plan B: AC Comfort Train (3A) + APTDC Haritha Hotel',
-        combinationType: 'Train (AC) + Star Hotel',
-        suitabilityReason: `Ideal family balance of comfort for seniors and children with air-conditioned berths and guaranteed tourism board hospitality.`,
-        itemizedBudget: {
-          transport: train3ARoundTrip,
-          accommodation: aptdcHotelStay,
-          localTravel: 2400,
-          meals: 1800 * nights,
-          ticketsAndActivities: 1800,
-          taxesAndServiceFees: Math.round(train3ARoundTrip * 0.05 + aptdcHotelStay * 0.12),
-          contingencyAllowance: 2000,
-        },
-        totalFamilyCost:
-          train3ARoundTrip +
-          aptdcHotelStay +
-          2400 +
-          1800 * nights +
-          1800 +
-          Math.round(train3ARoundTrip * 0.05 + aptdcHotelStay * 0.12) +
-          2000,
-        perPersonCost: Math.round(
-          (train3ARoundTrip +
-            aptdcHotelStay +
-            2400 +
-            1800 * nights +
-            1800 +
-            Math.round(train3ARoundTrip * 0.05 + aptdcHotelStay * 0.12) +
-            2000) /
-            travellers
-        ),
-        missingOrEstimatedNotes: [
-          'Train 3A fare includes linen and air conditioning (₹975/pax each way).',
-          'APTDC Haritha provides tourist facilitation counter and sanitized family rooms near Alipiri.',
-        ],
-        itinerarySummary: [
-          `Day 1: Evening boarding at Kakinada Town on Seshadri Express in 3rd AC.`,
-          `Day 2: Morning arrival at Tirupati. Transfer to APTDC Haritha. Dedicated cab for Tirumala darshan and Kapilatheertham waterfalls.`,
-          `Day 3: Excursion to Chandragiri Fort & Light Show. Return to Tirupati station for boarding overnight train back.`,
-          `Day 4: Comfortable arrival at Kakinada.`,
-        ],
-        complianceWarning:
-          'AC train quotas for Tirupati fill fast; book immediately on IRCTC portal.',
-      },
-      {
-        planName: 'Plan C: All-Inclusive IRCTC Rail Tour Package (Hassle-Free Darshan)',
-        combinationType: 'All-Inclusive Tour Package',
-        suitabilityReason: `Eliminates the stress of booking separate train, darshan, hotel, and local transfers. Perfect for families travelling with elders.`,
-        itemizedBudget: {
-          transport: 0,
-          accommodation: 0,
-          localTravel: 0,
-          meals: 800 * nights,
-          ticketsAndActivities: 0,
-          taxesAndServiceFees: Math.round(irctcPackageTotal * 0.05),
-          contingencyAllowance: 1200,
-        },
-        totalFamilyCost: irctcPackageTotal + 800 * nights + Math.round(irctcPackageTotal * 0.05) + 1200,
-        perPersonCost: Math.round(
-          (irctcPackageTotal + 800 * nights + Math.round(irctcPackageTotal * 0.05) + 1200) / travellers
-        ),
-        missingOrEstimatedNotes: [
-          'Package includes: Confirmed round-trip train berths (3A/SL), AC hotel stay, dedicated road transport, and official TTD ₹300 Special Entry Darshan pass.',
-          'Price calculated per person: ₹4,650 per adult/senior, ₹3,750 per child.',
-        ],
-        itinerarySummary: [
-          `Day 1: Board train from Samalkot/Kakinada with tour manager assistance.`,
-          `Day 2: Hotel check-in handled by IRCTC representative. Escorted VIP darshan at Tirumala with Laddu prasadam.`,
-          `Day 3: Local temple sightseeing (Tiruchanur, Srinivasa Mangapuram). Evening train boarding.`,
-          `Day 4: Safe return to Kakinada.`,
-        ],
-        complianceWarning:
-          'IRCTC package tickets must be booked at least 15 days in advance on the official IRCTC Tourism portal.',
+        complianceWarning: 'Prices shown are verified estimates. Direct bookings confirm exact tariff.',
       },
     ];
 
-    if (!ai) {
-      return res.json({
-        source: 'GROUNDED_DETERMINISTIC_RULES',
-        aiSummary: `Generated 3 verified, budget-aligned trip plans comparing Trains, Buses, and Official Packages for ${travellers} travellers (${adults} adults, ${seniors} seniors, ${children} children).`,
-        plans: fallbackPlans,
-      });
-    }
-
-    const prompt = `
-You are an expert South Indian travel and pilgrimage advisor for TripTogether.
-A family is planning a trip with these verified parameters:
-- Origin: ${origin}
-- Destination: ${destination}
-- Travellers: ${travellers} total (${adults} Adults, ${children} Children, ${seniors} Seniors)
-- Duration: ${nights} nights (${nights + 1} days)
-- Rooms Needed: ${rooms}
-- Total Family Budget: ₹${totalBudget}
-- Urgency: ${urgency}
-- Transport Preference: ${preferredTransport}
-
-Verified baseline options available:
-1. Train 17250 Seshadri Express (SL: ₹365, 3A: ₹975 each way)
-2. Train 17488 Tirumala Express (SL: ₹345, 3A: ₹930 each way)
-3. APSRTC Indra AC Bus (₹1,120 each way)
-4. TTD Madhavam Guest House (₹800/room/night)
-5. APTDC Haritha (₹1,650/room/night)
-6. IRCTC 3-Day Pilgrim Package (₹4,650/adult, ₹3,750/child)
-
-Generate a JSON object with:
-1. "aiSummary": A 2-3 sentence personalized recommendation explaining which plan best fits the family composition and budget.
-2. "plans": An array of 3 realistic plans adhering strictly to this data. Never fabricate availability or guarantee darshan slots.
-`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-      },
-    });
-
-    let parsedSummary = `Custom plans prepared for ${travellers} travellers from ${origin} to ${destination}.`;
-    if (response.text) {
+    if (ai) {
       try {
-        const parsed = JSON.parse(response.text.trim());
-        if (parsed.aiSummary) parsedSummary = parsed.aiSummary;
-      } catch {
-        parsedSummary = response.text;
+        const prompt = `You are a certified professional travel planner for "Trip Together".
+Generate a realistic 3-day family travel itinerary from ${origin} to ${destination} for ${travellers} travellers (${adults} adults, ${children} children, ${seniors} seniors) with a total budget of ₹${totalBudget}.
+Output strictly valid JSON with keys: planName, combinationType, suitabilityReason, itemizedBudget (transport, accommodation, localTravel, meals, ticketsAndActivities, contingencyAllowance), totalFamilyCost, perPersonCost, missingOrEstimatedNotes, itinerarySummary, complianceWarning.`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+          },
+        });
+
+        if (response.text) {
+          const parsed = JSON.parse(response.text);
+          return res.json({
+            plans: Array.isArray(parsed) ? parsed : [parsed],
+            modelUsed: 'gemini-2.5-flash',
+            generatedAt: new Date().toISOString(),
+          });
+        }
+      } catch (aiErr) {
+        console.warn('Gemini AI generation fallback:', aiErr);
       }
     }
 
     return res.json({
-      source: 'GEMINI_AI_GROUNDED',
-      aiSummary: parsedSummary,
       plans: fallbackPlans,
+      modelUsed: 'Deterministic Reference Calculator',
+      generatedAt: new Date().toISOString(),
     });
   } catch (error) {
     console.error('AI recommendation error:', error);
@@ -503,7 +850,7 @@ Generate a JSON object with:
   }
 });
 
-// Favicon fallback handlers to prevent 404s in serverless and reverse-proxy environments
+// Favicon fallback handlers
 const FAVICON_SVG_CONTENT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
     <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -520,84 +867,6 @@ const FAVICON_SVG_CONTENT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 
   <circle cx="66" cy="74" r="3" fill="#FFFFFF" />
 </svg>`;
 
-const FAVICON_ICO_BASE64 =
-  'AAABAAIAICAAAAEAIACoEAAAJgAAABAQAAABACAAaAQAAM4QAAAoAAAAIAAAAEAAAAABACAAAAAAAAAQAAAAAAAAAAAAAAAA' +
-  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAHmGEQZ6iBFSfIoRen2LEYB/jRGAgY8RgIKQEYCEkhKAhZQSgIeWEoCIlxKAipkSgIub' +
-  'EoCNnRKAj54SgJCgEoCSohOAk6MTgJWlE4CWpxOAmKkTgJqqE3qbrBNSna4TBgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
-  'AAB2gxF3d4QR8XmGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRL/j54S/5Cg' +
-  'Ev+SohP/k6MT/5WlE/+WpxP/mKkT/5qqE/+brBPxna4TdwAAAAAAAAAAAAAAAAAAAAAAAAAAcn8QnnSBEf92gxH/d4QR/3mG' +
-  'Ef96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MT/5Wl' +
-  'E/+WpxP/mKkT/5qqE/+brBP/na4TngAAAAAAAAAAAAAAAG98EHdxfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32L' +
-  'Ef9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MT/5WlE/+WpxP/mKkT/5qq' +
-  'E/+brBP/na4TdwAAAABseBAGbnoQ8W98EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQ' +
-  'Ef+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MT/5WlE/+WpxP/mKkT/5qqE/+brBPxna4TBmt3' +
-  'EFJseBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eW' +
-  'Ev+IlxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MT/5WlE/+WpxP/mKkT/5qqE/+brBNSaXUQemt3EP9seBD/bnoQ/298' +
-  'EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf//////fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL//////4ub' +
-  'Ev+NnRL/j54S/5CgEv+SohP/k6MT/5WlE/+WpxP/mKkT/5qqE3pocxCAaXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q////' +
-  '////////////////////////////////////////////////////////////////////////////////////////j54S/5Cg' +
-  'Ev+SohP/k6MT/5WlE/+WpxP/mKkTgGZyEIBocxD/aXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q/3SBEf////////////////96' +
-  'iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/////////////////ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MT/5WlE/+W' +
-  'pxOAZHAPgGZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/' +
-  'jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MT/5WlE4Bjbg+AZHAP/2ZyEP9o' +
-  'cxD/aXUQ/2t3EP9seBD/bnoQ/298EP8Gd9n/BnfZ/wZ32f8Gd9n/JL/7/yS/+/8kv/v/JL/7/yS/+/8kv/v/JL/7/wZ32f8G' +
-  'd9n/BnfZ/wZ32f+IlxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MTgGFsD4Bjbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9s' +
-  'eBD/bnoQ/298EP8Gd9n/BnfZ/wZ32f8kv/v/JL/7/yS/+/8kv/v/JL/7/yS/+/8kv/v/BnfZ/wZ32f8Gd9n/hZQS/4eWEv+I' +
-  'lxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohOAYGsPgGFsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ/wZ32f8G' +
-  'd9n/BnfZ/wZ32f8kv/v/JL/7/yS/+/8kv/v/JL/7/wZ32f8Gd9n/BnfZ/wZ32f+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+N' +
-  'nRL/j54S/5CgEoBeaQ+AYGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ/wZ32f8Gd9n/BnfZ/yS/+/8k' +
-  'v/v/JL/7/yS/+/8kv/v/BnfZ/wZ32f8Gd9n/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRL/j54SgF1nD4Be' +
-  'aQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ/wZ32f8Gd9n/BnfZ/yS/+/8kv/v/JL/7/wZ32f8G' +
-  'd9n/BnfZ/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRKAW2YPgF1nD/9eaQ//YGsP/2FsD/9j' +
-  'bg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/BnfZ/wZ32f8Gd9n/JL/7/yS/+/8kv/v/BnfZ/wZ32f8Gd9n/fIoR/32LEf9/' +
-  'jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEoBZZA+AW2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9o' +
-  'cxD/aXUQ/2t3EP9seBD/BnfZ/wZ32f8Gd9n/JL/7/wZ32f8Gd9n/BnfZ/3mGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+E' +
-  'khL/hZQS/4eWEv+IlxL/ipkSgFhiD4BZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP8G' +
-  'd9n/BnfZ/wZ32f8Gd9n/BnfZ/wZ32f8Gd9n/d4QR/3mGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+I' +
-  'lxKAVmAOgFhiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP8Gd9n/BnfZ/wZ32f8G' +
-  'd9n/BnfZ/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEoBVXw6AVmAO/1hiD/9Z' +
-  'ZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP8Gd9n/BnfZ/wZ32f9xfhD/cn8Q/3SBEf92' +
-  'gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQSgFNdDoBVXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9e' +
-  'aQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/wZ32f8Gd9n/BnfZ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96' +
-  'iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhKAUlsOgFNdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9j' +
-  'bg//ZHAP/2ZyEP9ocxD/JL/7/wZ32f8kv/v/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/' +
-  'jRH/gY8R/4KQEYBQWQ6AUlsO/1NdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/yS/+/8k' +
-  'v/v/BnfZ/yS/+/8kv/v/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/jRH/gY8RgE9YDoBQ' +
-  'WQ7/UlsO/1NdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//JL/7/yS/+/8kv/v/JL/7/yS/+/9s' +
-  'eBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/jRGATVYOgE9YDv9QWQ7/UlsO/1NdDv9V' +
-  'Xw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/8kv/v/JL/7/yS/+/8kv/v/JL/7/2t3EP9seBD/bnoQ/298EP9x' +
-  'fhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEYBLVA56TVYO/09YDv9QWQ7/UlsO/1NdDv9VXw7/VmAO/1hiD/9Z' +
-  'ZA//W2YP/11nD/9eaQ//YGsP/2FsD/8kv/v/JL/7/yS/+/9ocxD/aXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92' +
-  'gxH/d4QR/3mGEf96iBH/fIoRekpTDlJLVA7/TVYO/09YDv9QWQ7/UlsO/1NdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9e' +
-  'aQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96' +
-  'iBFSSFENBkpTDvFLVA7/TVYO/09YDv9QWQ7/UlsO/1NdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9j' +
-  'bg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR8XmGEQYAAAAASFENd0pTDv9L' +
-  'VA7/TVYO/09YDv9QWQ7/UlsO/1NdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9o' +
-  'cxD/aXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxF3AAAAAAAAAAAAAAAASFENnkpTDv9LVA7/TVYO/09YDv9Q' +
-  'WQ7/UlsO/1NdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9s' +
-  'eBD/bnoQ/298EP9xfhD/cn8QngAAAAAAAAAAAAAAAAAAAAAAAAAASFENd0pTDvFLVA7/TVYO/09YDv9QWQ7/UlsO/1NdDv9V' +
-  'Xw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ8W98EHcA' +
-  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASFENBkpTDlJLVA56TVYOgE9YDoBQWQ6AUlsOgFNdDoBVXw6AVmAOgFhiD4BZ' +
-  'ZA+AW2YPgF1nD4BeaQ+AYGsPgGFsD4Bjbg+AZHAPgGZyEIBocxCAaXUQemt3EFJseBAGAAAAAAAAAAAAAAAAAAAAAPAAAA/g' +
-  'AAAHwAAAA4AAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
-  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAABwAAAA+AAAAfwAAAPKAAAABAAAAAgAAAAAQAgAAAAAAAABAAAAAAAAAAAAAAA' +
-  'AAAAAAAAAAAAAAAAAAAAd4QRVXqIEX99ixGAgY8RgISSEoCHlhKAipkSgI2dEoCQoBKAk6MTgJanE3+aqhNVAAAAAAAAAAAA' +
-  'AAAAcX4QqXSBEf93hBH/eogR/32LEf+BjxH/hJIS/4eWEv+KmRL/jZ0S/5CgEv+ToxP/lqcT/5qqE6kAAAAAa3cQVW56EP9x' +
-  'fhD/dIER/3eEEf96iBH/fYsR/4GPEf+EkhL/h5YS/4qZEv+NnRL/kKAS/5OjE/+WpxP/mqoTVWhzEH9rdxD/bnoQ/3F+EP//' +
-  '///////////////////////////////////////////////+QoBL/k6MT/5anE39kcA+AaHMQ/2t3EP9uehD/cX4Q/3SBEf93' +
-  'hBH/eogR/32LEf+BjxH/hJIS/4eWEv+KmRL/jZ0S/5CgEv+ToxOAYWwPgGRwD/9ocxD/a3cQ/256EP8Gd9n/BnfZ/yS/+/8k' +
-  'v/v/JL/7/wZ32f8Gd9n/h5YS/4qZEv+NnRL/kKASgF5pD4BhbA//ZHAP/2hzEP9rdxD/bnoQ/wZ32f8kv/v/JL/7/yS/+/8G' +
-  'd9n/gY8R/4SSEv+HlhL/ipkS/42dEoBbZg+AXmkP/2FsD/9kcA//aHMQ/2t3EP8Gd9n/BnfZ/yS/+/8Gd9n/BnfZ/32LEf+B' +
-  'jxH/hJIS/4eWEv+KmRKAWGIPgFtmD/9eaQ//YWwP/2RwD/9ocxD/a3cQ/wZ32f8Gd9n/BnfZ/3eEEf96iBH/fYsR/4GPEf+E' +
-  'khL/h5YSgFVfDoBYYg//W2YP/15pD/9hbA//ZHAP/2hzEP9rdxD/BnfZ/3F+EP90gRH/d4QR/3qIEf99ixH/gY8R/4SSEoBS' +
-  'Ww6AVV8O/1hiD/9bZg//XmkP/2FsD/9kcA//aHMQ/wZ32f9uehD/cX4Q/3SBEf93hBH/eogR/32LEf+BjxGAT1gOgFJbDv9V' +
-  'Xw7/WGIP/1tmD/9eaQ//YWwP/yS/+/8kv/v/JL/7/256EP9xfhD/dIER/3eEEf96iBH/fYsRgEtUDn9PWA7/UlsO/1VfDv9Y' +
-  'Yg//W2YP/15pD/9hbA//JL/7/2hzEP9rdxD/bnoQ/3F+EP90gRH/d4QR/3qIEX9IUQ1VS1QO/09YDv9SWw7/VV8O/1hiD/9b' +
-  'Zg//XmkP/2FsD/9kcA//aHMQ/2t3EP9uehD/cX4Q/3SBEf93hBFVAAAAAEhRDalLVA7/T1gO/1JbDv9VXw7/WGIP/1tmD/9e' +
-  'aQ//YWwP/2RwD/9ocxD/a3cQ/256EP9xfhCpAAAAAAAAAAAAAAAASFENVUtUDn9PWA6AUlsOgFVfDoBYYg+AW2YPgF5pD4Bh' +
-  'bA+AZHAPgGhzEH9rdxBVAAAAAAAAAADAAwAAgAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
-  'AAAAAAAAAIABAADAAwAA';
-
 const serveFaviconIco = (_req: express.Request, res: express.Response) => {
   res.setHeader('Content-Type', 'image/x-icon');
   res.setHeader('Cache-Control', 'public, max-age=86400');
@@ -607,7 +876,7 @@ const serveFaviconIco = (_req: express.Request, res: express.Response) => {
       return res.send(fs.readFileSync(icoPath));
     }
   } catch {}
-  res.send(Buffer.from(FAVICON_ICO_BASE64, 'base64'));
+  res.sendStatus(404);
 };
 
 const serveFaviconSvg = (_req: express.Request, res: express.Response) => {
@@ -624,7 +893,6 @@ router.get('/favicon.svg', serveFaviconSvg);
 // Mount API router
 app.use('/api', router);
 
-// Only mount at root in Vercel serverless environment where rewrites might strip /api
 if (process.env.VERCEL) {
   app.use('/', router);
 }

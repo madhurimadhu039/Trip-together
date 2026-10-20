@@ -25,6 +25,19 @@ import {
   Mail,
   LogOut,
   X,
+  Menu,
+  Heart,
+  Star,
+  Eye,
+  EyeOff,
+  Filter,
+  ShieldAlert,
+  HelpCircle,
+  Phone,
+  Share2,
+  Printer,
+  Bookmark,
+  AlertCircle,
 } from 'lucide-react';
 import type {
   NavSection,
@@ -35,6 +48,11 @@ import type {
   ChecklistItem,
   SavedBookingItem,
   ProviderAdapterStatus,
+  DestinationItem,
+  PackageItem,
+  LocalGuideItem,
+  PlatformReviewItem,
+  SavedTripRecord,
 } from './types';
 import {
   KAKINADA_TO_TIRUPATI_TRAINS,
@@ -48,6 +66,12 @@ import {
   INITIAL_CHECKLIST_ITEMS,
   INITIAL_SAVED_BOOKINGS,
 } from './data';
+import {
+  SEED_DESTINATIONS,
+  SEED_PACKAGES,
+  SEED_GUIDES,
+  SEED_REVIEWS,
+} from './data/platformSeed';
 import { TransportSection } from './components/TransportSection';
 import { HotelsSection } from './components/HotelsSection';
 import { PackagesSection } from './components/PackagesSection';
@@ -57,9 +81,22 @@ import { FamilyChatSection } from './components/FamilyChatSection';
 import { PackingChecklistSection } from './components/PackingChecklistSection';
 import { BudgetSection } from './components/BudgetSection';
 import { DestinationSearchBar } from './components/DestinationSearchBar';
+import { LocalGuidesSection } from './components/LocalGuidesSection';
+import { DestinationDetailModal } from './components/DestinationDetailModal';
+import { PackageDetailModal } from './components/PackageDetailModal';
+import { BookingEnquiryModal } from './components/BookingEnquiryModal';
+import { ContactGuideModal } from './components/ContactGuideModal';
+import { GuideProfileModal } from './components/GuideProfileModal';
+import { GuideDashboardModal } from './components/GuideDashboardModal';
+import { GuideRegisterModal } from './components/GuideRegisterModal';
+import { ContactSupportModal } from './components/ContactSupportModal';
+import { AboutUsModal } from './components/AboutUsModal';
+import { WriteReviewModal } from './components/WriteReviewModal';
+import { TravellerDashboardSection } from './components/TravellerDashboardSection';
+import { AdminDashboardSection } from './components/AdminDashboardSection';
 import type { PopularDestination } from './data/popularDestinations';
 
-// High-fidelity generated assets
+// High-fidelity assets
 import heroTirupatiImg from './assets/images/tirupati_hills_hero_1791742985128.jpg';
 import kakinadaGatewayImg from './assets/images/kakinada_coastal_gateway_1791742998081.jpg';
 import tirupatiHotelImg from './assets/images/tirupati_family_hotel_1791743009478.jpg';
@@ -69,6 +106,7 @@ interface AuthUser {
   id: string;
   email: string;
   name: string;
+  role?: 'traveler' | 'guide' | 'admin';
 }
 
 const FAMILY_DROPDOWN_ITEMS: {
@@ -135,7 +173,7 @@ const DEFAULT_PROVIDER_ADAPTERS: ProviderAdapterStatus[] = [
     mode: 'REFERENCE_ADAPTER',
     officialPortalUrl: 'https://www.goindigo.in/',
     complianceNote:
-      'Accounts for the fact that Kakinada has no commercial airport — computes realistic road transfers to Rajahmundry (RJA) or Visakhapatnam (VTZ).',
+      'Accounts for realistic road transfers to regional airports (Rajahmundry/VTZ/Tirupati).',
   },
   {
     id: 'adapter-hotels-ttd-aptdc',
@@ -150,24 +188,49 @@ const DEFAULT_PROVIDER_ADAPTERS: ProviderAdapterStatus[] = [
   },
   {
     id: 'adapter-gemini-ai',
-    providerName: 'Gemini 3.8 Flash Trip Recommendation Engine',
+    providerName: 'Gemini Trip Recommendation Engine',
     category: 'AI Assistant',
     envSecretName: 'GEMINI_API_KEY',
     configured: true,
     mode: 'LIVE_API',
-    officialPortalUrl: 'https://ttdevasthanams.ap.gov.in/',
+    officialPortalUrl: 'https://ai.google.dev/',
     complianceNote:
-      'Grounded strictly on verified transport, hotel, and tour package records without inventing live seat counts or guaranteed darshan slots.',
+      'Grounded strictly on verified transport, hotel, and tour package records without inventing fake bookings.',
   },
 ];
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [familyDropdownOpen, setFamilyDropdownOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDestination, setSelectedDestination] = useState<PopularDestination | null>(null);
+  const [destinationCategoryFilter, setDestinationCategoryFilter] = useState<string>('All');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+
+  // Platform Data State
+  const [destinations, setDestinations] = useState<DestinationItem[]>(SEED_DESTINATIONS);
+  const [packages, setPackages] = useState<PackageItem[]>(SEED_PACKAGES);
+  const [guides, setGuides] = useState<LocalGuideItem[]>(SEED_GUIDES);
+  const [reviews, setReviews] = useState<PlatformReviewItem[]>(SEED_REVIEWS);
+
+  // Wishlists
+  const [wishlistDestinations, setWishlistDestinations] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('triptogether_wishlist_dest');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return ['Tirupati', 'Goa'];
+  });
+
+  const [wishlistPackages, setWishlistPackages] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('triptogether_wishlist_pkg');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return ['pkg-tirupati-darshan'];
+  });
 
   // User Authentication State
   const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
@@ -179,6 +242,7 @@ export default function App() {
       id: 'usr-1',
       name: 'Madhuri (Lead Organizer)',
       email: 'madhurimadhu039@gmail.com',
+      role: 'traveler',
     };
   });
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
@@ -186,6 +250,7 @@ export default function App() {
   const [authEmail, setAuthEmail] = useState<string>('');
   const [authPassword, setAuthPassword] = useState<string>('');
   const [authName, setAuthName] = useState<string>('');
+  const [passwordVisible, setPasswordVisible] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState<boolean>(false);
   const [pendingSection, setPendingSection] = useState<NavSection | null>(null);
@@ -194,7 +259,22 @@ export default function App() {
   const [newMemberNameInput, setNewMemberNameInput] = useState<string>('');
   const [newMemberRoleInput, setNewMemberRoleInput] = useState<FamilyMember['role']>('Organizer');
 
-  // Core editable Trip Parameters (customized from Pickup to Destination)
+  // Modals state
+  const [activeDestinationModal, setActiveDestinationModal] = useState<DestinationItem | null>(null);
+  const [activePackageModal, setActivePackageModal] = useState<PackageItem | null>(null);
+  const [activeBookingModal, setActiveBookingModal] = useState<PackageItem | null>(null);
+  const [activeGuideContactModal, setActiveGuideContactModal] = useState<LocalGuideItem | null>(null);
+  const [activeGuideProfileModal, setActiveGuideProfileModal] = useState<LocalGuideItem | null>(null);
+  const [guideDashboardModalOpen, setGuideDashboardModalOpen] = useState<boolean>(false);
+  const [guideRegisterModalOpen, setGuideRegisterModalOpen] = useState<boolean>(false);
+  const [contactModalOpen, setContactModalOpen] = useState<boolean>(false);
+  const [aboutUsModalOpen, setAboutUsModalOpen] = useState<boolean>(false);
+  const [writeReviewModalOpen, setWriteReviewModalOpen] = useState<boolean>(false);
+
+  // Policy Modals state
+  const [policyModal, setPolicyModal] = useState<'privacy' | 'terms' | 'cancellation' | null>(null);
+
+  // Core editable Trip Parameters
   const [tripParams, setTripParams] = useState<TripParams>(() => {
     try {
       const saved = localStorage.getItem('triptogether_params_v2');
@@ -202,7 +282,7 @@ export default function App() {
     } catch {}
     return {
       origin: 'Pickup Location',
-      destination: 'Destination',
+      destination: 'Tirupati',
       travelDate: '2026-10-25',
       urgency: 'scheduled',
       travellers: 2,
@@ -232,9 +312,7 @@ export default function App() {
       const saved = localStorage.getItem('triptogether_members_v2');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0 && !parsed.some((m: any) => m.name === 'Ramesh Rao')) {
-          return parsed;
-        }
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
     return INITIAL_FAMILY_MEMBERS;
@@ -306,22 +384,104 @@ export default function App() {
     } catch {}
   }, [savedBookings]);
 
-  // Fetch backend provider adapter status on load with graceful fallback
   useEffect(() => {
-    fetch('/api/providers/status')
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
+    try {
+      localStorage.setItem('triptogether_wishlist_dest', JSON.stringify(wishlistDestinations));
+    } catch {}
+  }, [wishlistDestinations]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('triptogether_wishlist_pkg', JSON.stringify(wishlistPackages));
+    } catch {}
+  }, [wishlistPackages]);
+
+  useEffect(() => {
+    try {
+      if (authUser) {
+        localStorage.setItem('triptogether_auth_v1', JSON.stringify(authUser));
+      } else {
+        localStorage.removeItem('triptogether_auth_v1');
+      }
+    } catch {}
+  }, [authUser]);
+
+  // Fetch dynamic database records on load
+  const loadPlatformData = () => {
+    // Destinations
+    fetch('/api/destinations')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.destinations && Array.isArray(d.destinations) && d.destinations.length > 0) {
+          setDestinations(d.destinations);
+        }
       })
+      .catch(() => {});
+
+    // Packages
+    fetch('/api/packages')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.packages && Array.isArray(d.packages) && d.packages.length > 0) {
+          setPackages(d.packages);
+        }
+      })
+      .catch(() => {});
+
+    // Guides
+    fetch('/api/guides')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.guides && Array.isArray(d.guides) && d.guides.length > 0) {
+          setGuides(d.guides);
+        }
+      })
+      .catch(() => {});
+
+    // Reviews
+    fetch('/api/reviews')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.reviews && Array.isArray(d.reviews) && d.reviews.length > 0) {
+          setReviews(d.reviews);
+        }
+      })
+      .catch(() => {});
+
+    // Providers
+    fetch('/api/providers/status')
+      .then((r) => r.json())
       .then((data) => {
         if (data?.adapters && Array.isArray(data.adapters) && data.adapters.length > 0) {
           setProviderAdapters(data.adapters);
         }
       })
-      .catch(() => {
-        // Fallback already pre-populated from DEFAULT_PROVIDER_ADAPTERS
-      });
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadPlatformData();
   }, []);
+
+  const handleToggleWishlistDest = (name: string) => {
+    setWishlistDestinations((prev) => {
+      const exists = prev.includes(name);
+      const updated = exists ? prev.filter((d) => d !== name) : [...prev, name];
+      setToastMessage(exists ? `Removed ${name} from Wishlist` : `✓ Added ${name} to Wishlist`);
+      setTimeout(() => setToastMessage(null), 3000);
+      return updated;
+    });
+  };
+
+  const handleToggleWishlistPkg = (pkgId: string) => {
+    setWishlistPackages((prev) => {
+      const exists = prev.includes(pkgId);
+      const updated = exists ? prev.filter((p) => p !== pkgId) : [...prev, pkgId];
+      setToastMessage(exists ? 'Removed package from Wishlist' : '✓ Added package to Wishlist');
+      setTimeout(() => setToastMessage(null), 3000);
+      return updated;
+    });
+  };
 
   const handleShortlistBooking = (item: Omit<SavedBookingItem, 'id' | 'addedAt'>) => {
     const created: SavedBookingItem = {
@@ -341,25 +501,15 @@ export default function App() {
       setPendingSection(targetSection);
     }
     setFamilyDropdownOpen(false);
+    setMobileMenuOpen(false);
     setAuthError(null);
     setAuthModalOpen(true);
-  };
-
-  const handleUnauthenticatedClickCapture = (e: React.MouseEvent) => {
-    if (!authUser) {
-      const target = e.target as HTMLElement | null;
-      if (target?.closest?.('[data-auth-modal]')) {
-        return;
-      }
-      e.preventDefault();
-      e.stopPropagation();
-      openAuthPrompt();
-    }
   };
 
   const navigateAndScroll = (section: NavSection) => {
     setActiveSection(section);
     setFamilyDropdownOpen(false);
+    setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -464,7 +614,6 @@ export default function App() {
           setAuthSubmitting(false);
           return;
         }
-        // If server responded with 404/500/offline, fall through to seamless client session
         throw new Error(data?.error || `HTTP ${response.status}`);
       }
 
@@ -472,7 +621,7 @@ export default function App() {
       setAuthUser(signedInUser);
       setAuthModalOpen(false);
       setAuthPassword('');
-      setToastMessage(`Welcome, ${signedInUser.name} (${signedInUser.email})! You are now signed in.`);
+      setToastMessage(`Welcome, ${signedInUser.name}! You are now signed in.`);
       setTimeout(() => setToastMessage(null), 4000);
 
       if (pendingSection) {
@@ -491,11 +640,12 @@ export default function App() {
         id: `usr-${Date.now()}`,
         email: cleanEmail,
         name: fallbackName,
+        role: cleanEmail.includes('admin') ? 'admin' : 'traveler',
       };
       setAuthUser(signedInUser);
       setAuthModalOpen(false);
       setAuthPassword('');
-      setToastMessage(`Welcome, ${signedInUser.name} (${signedInUser.email})! You are now signed in.`);
+      setToastMessage(`Welcome, ${signedInUser.name}! You are now signed in.`);
       setTimeout(() => setToastMessage(null), 4000);
 
       if (pendingSection) {
@@ -512,13 +662,29 @@ export default function App() {
     setAuthUser(null);
     setProfileMenuOpen(false);
     setActiveSection('dashboard');
-    setToastMessage('You have signed out of TripTogether.');
+    setToastMessage('You have signed out of Trip Together.');
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Reopen a saved trip into active Trip Planner state
+  const handleOpenSavedTrip = (trip: SavedTripRecord) => {
+    setTripParams((prev) => ({
+      ...prev,
+      destination: trip.destination,
+      travelDate: trip.travelDate || prev.travelDate,
+      travellers: trip.travellers || prev.travellers,
+      totalBudget: trip.budget || prev.totalBudget,
+    }));
+    if (trip.itinerary && Array.isArray(trip.itinerary) && trip.itinerary.length > 0) {
+      setItineraryDays(trip.itinerary);
+    }
+    setToastMessage(`✓ Opened trip: ${trip.title}`);
+    setTimeout(() => setToastMessage(null), 3500);
+    navigateAndScroll('builder');
   };
 
   // Summary metrics
   const totalPlannedCost = savedBookings.reduce((s, b) => s + b.totalFamilyCost, 0);
-  const remainingBudget = tripParams.totalBudget - totalPlannedCost;
   const totalRequiredUnits = checklistItems.reduce((s, i) => s + i.requiredQuantity, 0);
   const totalPackedUnits = checklistItems.reduce((s, i) => s + i.packedQuantity, 0);
   const packingProgressPct =
@@ -579,7 +745,6 @@ export default function App() {
     }
     const q = raw.toLowerCase();
 
-    // Check if an explicit destination was passed or currently matches the input text
     const activeDest =
       explicitDest ||
       (selectedDestination && selectedDestination.name.toLowerCase() === q
@@ -596,83 +761,45 @@ export default function App() {
     } else {
       setTripParams((prev) => ({
         ...prev,
+        destination: raw,
         destinationId: undefined,
         destinationDetails: null,
       }));
-    }
-
-    // Parse "Origin to Destination" if user types "X to Y"
-    if (q.includes(' to ')) {
-      const parts = raw.split(/ to /i);
-      if (parts[0]?.trim() && parts[1]?.trim()) {
-        setTripParams((prev) => ({
-          ...prev,
-          origin: parts[0].trim(),
-          destination: parts[1].trim(),
-          destinationId: undefined,
-          destinationDetails: null,
-        }));
-      }
-    } else if (
-      !q.includes('hotel') &&
-      !q.includes('room') &&
-      !q.includes('package') &&
-      !q.includes('stay') &&
-      !q.includes('chat') &&
-      !q.includes('track') &&
-      !q.includes('pack') &&
-      !q.includes('budget')
-    ) {
-      if (!activeDest) {
-        setTripParams((prev) => ({
-          ...prev,
-          destination: raw,
-          destinationId: undefined,
-          destinationDetails: null,
-        }));
-      }
     }
 
     if (
       q.includes('hotel') ||
       q.includes('room') ||
       q.includes('stay') ||
-      q.includes('ttd') ||
-      q.includes('srinivasam') ||
-      q.includes('madhavam') ||
-      q.includes('haritha') ||
       q.includes('choultry')
     ) {
-      setToastMessage(`Showing verified hotels & rooms matching "${raw}"`);
+      setToastMessage(`Showing verified hotels & stays matching "${raw}"`);
       setTimeout(() => setToastMessage(null), 3500);
       navigateAndScroll('hotels');
     } else if (
       q.includes('package') ||
-      q.includes('darshan') ||
-      q.includes('aptdc') ||
-      q.includes('tour')
+      q.includes('tour') ||
+      q.includes('darshan')
     ) {
       setToastMessage(`Showing tour packages matching "${raw}"`);
       setTimeout(() => setToastMessage(null), 3500);
       navigateAndScroll('packages');
     } else if (
+      q.includes('guide') ||
+      q.includes('local')
+    ) {
+      setToastMessage(`Showing local guides matching "${raw}"`);
+      setTimeout(() => setToastMessage(null), 3500);
+      navigateAndScroll('guides');
+    } else if (
       q.includes('itinerary') ||
       q.includes('plan') ||
       q.includes('day') ||
-      q.includes('ai') ||
-      q.includes('custom')
+      q.includes('ai')
     ) {
-      setToastMessage(`Opening Custom Trip Builder & AI Advisor for "${raw}"`);
+      setToastMessage(`Opening Trip Planner for "${raw}"`);
       setTimeout(() => setToastMessage(null), 3500);
       navigateAndScroll('builder');
-    } else if (q.includes('track') || q.includes('gps') || q.includes('map') || q.includes('location')) {
-      navigateAndScroll('tracking');
-    } else if (q.includes('chat') || q.includes('message')) {
-      navigateAndScroll('chat');
-    } else if (q.includes('pack') || q.includes('checklist') || q.includes('aadhaar')) {
-      navigateAndScroll('checklist');
-    } else if (q.includes('budget') || q.includes('cost') || q.includes('booking')) {
-      navigateAndScroll('budget');
     } else {
       setToastMessage(`Searching transport options for "${raw}"`);
       setTimeout(() => setToastMessage(null), 3500);
@@ -680,12 +807,25 @@ export default function App() {
     }
   };
 
+  const filteredDestinations = destinations.filter((d) => {
+    if (destinationCategoryFilter === 'All') return true;
+    return d.category.toLowerCase() === destinationCategoryFilter.toLowerCase();
+  });
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#F5F3EE] text-slate-900">
-      {/* Single Clean Top Navigation Bar with Family Dropdown & Sign In Avatar Button */}
-      <header className="sticky top-0 z-40 bg-[#FAF9F5]/95 backdrop-blur-md border-b border-stone-200/80">
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-4 flex items-center justify-between gap-8">
-          {/* Zone 1: Custom TripTogether Brand Logo in Left Corner of Navbar */}
+    <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900 selection:bg-[#0D9488] selection:text-white">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 bg-[#0F1E36] text-white text-xs font-semibold rounded-2xl shadow-2xl border border-teal-500/30 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
+          <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* TOP NAVIGATION BAR */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/90 shadow-xs">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-3.5 flex items-center justify-between gap-4">
+          {/* Brand Logo */}
           <a
             href="#top"
             onClick={(e) => {
@@ -694,131 +834,119 @@ export default function App() {
             }}
             className="flex items-center gap-3 group shrink-0"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#1E332A] flex items-center justify-center shadow-sm border border-amber-400/30 group-hover:bg-[#14241D] transition-colors shrink-0">
-              <svg
-                viewBox="0 0 40 40"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-7 h-7"
-                aria-hidden="true"
-              >
-                {/* Golden Sunrise Halo */}
-                <circle cx="20" cy="14" r="6" fill="#FBBF24" fillOpacity="0.9" />
-                {/* Four-Point Compass Star */}
-                <path
-                  d="M20 4L21.4 8.6L26 10L21.4 11.4L20 16L18.6 11.4L14 10L18.6 8.6L20 4Z"
-                  fill="#FEF3C7"
-                />
-                {/* Seshachalam Twin Hills Silhouette */}
-                <path
-                  d="M4 30L13.5 17.5L21 26L27.5 19L36 30H4Z"
-                  fill="#34D399"
-                  fillOpacity="0.3"
-                />
-                <path
-                  d="M4 30L13.5 18.5L21.5 26.5L28 19.5L36 30"
-                  stroke="#FDE68A"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {/* Winding Family Journey Path */}
-                <path
-                  d="M15 35C16.5 31.5 20.5 29.5 24.5 26.5"
-                  stroke="#FFFFFF"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                />
-              </svg>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0F1E36] via-[#1E3A8A] to-[#0D9488] flex items-center justify-center shadow-md border border-white/20 group-hover:scale-105 transition-transform shrink-0">
+              <Compass className="w-6 h-6 text-teal-300" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-bold tracking-tight text-[#1E332A] font-serif-display leading-none whitespace-nowrap">
+              <span className="text-xl font-bold tracking-tight text-[#0F1E36] font-serif-display leading-none">
                 TripTogether
               </span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-800/90 mt-1 whitespace-nowrap">
-                Family Travel
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#0D9488] mt-1">
+                Travel Platform
               </span>
             </div>
           </a>
 
-          {/* Zone 2: Primary navigation links + 1 unified Dropdown for Tracking, Chat, Checklist & Budget */}
-          <nav className="flex items-center gap-5 lg:gap-7 text-xs sm:text-sm font-medium text-stone-600">
+          {/* Desktop Navigation Links */}
+          <nav className="hidden lg:flex items-center gap-6 text-xs sm:text-sm font-medium text-slate-600">
             <button
               type="button"
               onClick={() => navigateAndScroll('dashboard')}
-              className={`hover:text-[#1E332A] transition-colors whitespace-nowrap shrink-0 ${
+              className={`hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer ${
                 activeSection === 'dashboard'
-                  ? 'text-[#1E332A] font-semibold underline underline-offset-8 decoration-2'
+                  ? 'text-[#0D9488] font-bold underline underline-offset-8 decoration-2'
                   : ''
               }`}
             >
-              Destinations
+              Home
             </button>
+
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('destinations')}
+              className={`hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer ${
+                activeSection === 'destinations'
+                  ? 'text-[#0D9488] font-bold underline underline-offset-8 decoration-2'
+                  : ''
+              }`}
+            >
+              Explore Destinations
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('packages')}
+              className={`hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer ${
+                activeSection === 'packages'
+                  ? 'text-[#0D9488] font-bold underline underline-offset-8 decoration-2'
+                  : ''
+              }`}
+            >
+              Tour Packages
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('guides')}
+              className={`hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer ${
+                activeSection === 'guides'
+                  ? 'text-[#0D9488] font-bold underline underline-offset-8 decoration-2'
+                  : ''
+              }`}
+            >
+              Local Guides
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('builder')}
+              className={`hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer ${
+                activeSection === 'builder'
+                  ? 'text-[#0D9488] font-bold underline underline-offset-8 decoration-2'
+                  : ''
+              }`}
+            >
+              Trip Planner
+            </button>
+
             <button
               type="button"
               onClick={() => navigateAndScroll('transport')}
-              className={`hover:text-[#1E332A] transition-colors whitespace-nowrap shrink-0 ${
+              className={`hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer ${
                 activeSection === 'transport'
-                  ? 'text-[#1E332A] font-semibold underline underline-offset-8 decoration-2'
+                  ? 'text-[#0D9488] font-bold underline underline-offset-8 decoration-2'
                   : ''
               }`}
             >
               Transport
             </button>
+
             <button
               type="button"
               onClick={() => navigateAndScroll('hotels')}
-              className={`hover:text-[#1E332A] transition-colors whitespace-nowrap shrink-0 ${
+              className={`hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer ${
                 activeSection === 'hotels'
-                  ? 'text-[#1E332A] font-semibold underline underline-offset-8 decoration-2'
+                  ? 'text-[#0D9488] font-bold underline underline-offset-8 decoration-2'
                   : ''
               }`}
             >
               Hotels
             </button>
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('packages')}
-              className={`hover:text-[#1E332A] transition-colors whitespace-nowrap shrink-0 ${
-                activeSection === 'packages'
-                  ? 'text-[#1E332A] font-semibold underline underline-offset-8 decoration-2'
-                  : ''
-              }`}
-            >
-              Packages
-            </button>
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('builder')}
-              className={`hover:text-[#1E332A] transition-colors whitespace-nowrap shrink-0 ${
-                activeSection === 'builder'
-                  ? 'text-[#1E332A] font-semibold underline underline-offset-8 decoration-2'
-                  : ''
-              }`}
-            >
-              Trip Builder
-            </button>
 
-            {/* Dropdown for Live Tracking, Family Chat, Packing Checklist, My Bookings & Budget */}
+            {/* Dropdown for Family Collaboration & Budget */}
             <div className="relative">
               <button
                 type="button"
-                onClick={() => {
-                  if (!authUser) {
-                    openAuthPrompt('tracking');
-                    return;
-                  }
-                  setFamilyDropdownOpen((prev) => !prev);
-                }}
-                className={`inline-flex items-center gap-1.5 hover:text-[#1E332A] transition-colors whitespace-nowrap shrink-0 ${
+                onClick={() => setFamilyDropdownOpen((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer ${
                   isDropdownSectionActive
-                    ? 'text-[#1E332A] font-semibold underline underline-offset-8 decoration-2'
+                    ? 'text-[#0D9488] font-bold underline underline-offset-8 decoration-2'
                     : ''
                 }`}
               >
                 <span>Family & Budget</span>
                 <ChevronDown
-                  className={`w-4 h-4 transition-transform duration-150 ${
+                  className={`w-3.5 h-3.5 transition-transform duration-150 ${
                     familyDropdownOpen ? 'rotate-180' : ''
                   }`}
                 />
@@ -826,12 +954,11 @@ export default function App() {
 
               {familyDropdownOpen && (
                 <>
-                  {/* Click-outside backdrop */}
                   <div
                     className="fixed inset-0 z-40"
                     onClick={() => setFamilyDropdownOpen(false)}
                   />
-                  <div className="absolute right-0 mt-3 w-72 bg-white rounded-2xl shadow-xl border border-stone-200/90 py-2 z-50">
+                  <div className="absolute right-0 mt-3 w-72 bg-white rounded-2xl shadow-xl border border-stone-200/90 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
                     <div className="px-4 py-2 border-b border-stone-100 flex items-center justify-between text-[11px] text-stone-500 font-mono-num">
                       <span>Packing: {packingProgressPct}%</span>
                       <span>₹{totalPlannedCost.toLocaleString('en-IN')} Planned</span>
@@ -844,13 +971,13 @@ export default function App() {
                           key={item.id}
                           type="button"
                           onClick={() => navigateAndScroll(item.id)}
-                          className={`w-full px-4 py-2.5 text-left flex items-start gap-3 transition-colors ${
+                          className={`w-full px-4 py-2.5 text-left flex items-start gap-3 transition-colors cursor-pointer ${
                             isActive
-                              ? 'bg-stone-100 text-[#1E332A] font-semibold'
+                              ? 'bg-teal-50 text-[#0D9488] font-semibold'
                               : 'text-slate-700 hover:bg-stone-50'
                           }`}
                         >
-                          <Icon className="w-4 h-4 text-[#1E332A] mt-0.5 shrink-0" />
+                          <Icon className="w-4 h-4 text-[#0D9488] mt-0.5 shrink-0" />
                           <div>
                             <div className="text-xs font-bold text-slate-900">{item.label}</div>
                             <div className="text-[11px] text-stone-500">{item.desc}</div>
@@ -862,19 +989,46 @@ export default function App() {
                 </>
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setAboutUsModalOpen(true)}
+              className="hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer"
+            >
+              About Us
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setContactModalOpen(true)}
+              className="hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer"
+            >
+              Contact
+            </button>
           </nav>
 
-          {/* Zone 3: Top-Right Sign In Button with Avatar Icon (or Signed-In User Avatar Menu) */}
-          <div className="flex items-center gap-3 shrink-0 relative">
+          {/* Right Action Buttons */}
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Plan a Trip CTA Button */}
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('builder')}
+              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Plan a Trip</span>
+            </button>
+
+            {/* Auth / Profile Menu */}
             {authUser ? (
-              <>
+              <div className="relative">
                 <button
                   type="button"
                   onClick={() => setProfileMenuOpen((prev) => !prev)}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-[#1E332A] rounded-full hover:bg-[#14241D] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                  className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-[#0F1E36] rounded-xl hover:bg-[#1E3A8A] transition-colors whitespace-nowrap cursor-pointer shadow-xs"
                 >
-                  <UserCircle className="w-4 h-4 text-amber-200 shrink-0" />
-                  <span>{authUser.name}</span>
+                  <UserCircle className="w-4 h-4 text-teal-300 shrink-0" />
+                  <span className="max-w-[120px] truncate">{authUser.name}</span>
                   <ChevronDown className="w-3.5 h-3.5 text-stone-300" />
                 </button>
 
@@ -884,31 +1038,74 @@ export default function App() {
                       className="fixed inset-0 z-40"
                       onClick={() => setProfileMenuOpen(false)}
                     />
-                    <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-stone-200/90 py-3 px-4 z-50 space-y-2.5">
+                    <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-stone-200/90 py-3 px-4 z-50 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
                       <div className="flex items-center gap-2.5 pb-2 border-b border-stone-100">
-                        <UserCircle className="w-8 h-8 text-[#1E332A] shrink-0" />
+                        <div className="w-8 h-8 rounded-full bg-teal-100 text-[#0D9488] flex items-center justify-center font-bold text-xs shrink-0">
+                          {authUser.name.slice(0, 2).toUpperCase()}
+                        </div>
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-slate-900 truncate">
                             {authUser.name}
                           </div>
                           <div className="text-[11px] text-stone-500 truncate">{authUser.email}</div>
+                          <span className="inline-block mt-0.5 text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-1.5 py-0.2 rounded">
+                            {authUser.role || 'Traveler'}
+                          </span>
                         </div>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          navigateAndScroll('traveller-dashboard');
+                        }}
+                        className="w-full text-left text-xs font-medium text-slate-700 hover:text-[#0D9488] py-1 flex items-center gap-2 cursor-pointer"
+                      >
+                        <UserCircle className="w-3.5 h-3.5 text-[#0D9488]" />
+                        <span>Traveller Dashboard</span>
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => {
                           setProfileMenuOpen(false);
                           navigateAndScroll('budget');
                         }}
-                        className="w-full text-left text-xs font-medium text-slate-700 hover:text-[#1E332A] py-1 flex items-center gap-2"
+                        className="w-full text-left text-xs font-medium text-slate-700 hover:text-[#0D9488] py-1 flex items-center gap-2 cursor-pointer"
                       >
-                        <Wallet className="w-3.5 h-3.5 text-[#1E332A]" />
-                        <span>My Bookings & Budget</span>
+                        <Wallet className="w-3.5 h-3.5 text-[#0D9488]" />
+                        <span>My Bookings & Ledger</span>
                       </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          setGuideDashboardModalOpen(true);
+                        }}
+                        className="w-full text-left text-xs font-medium text-slate-700 hover:text-[#0D9488] py-1 flex items-center gap-2 cursor-pointer"
+                      >
+                        <Award className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Guide Portal</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          navigateAndScroll('admin');
+                        }}
+                        className="w-full text-left text-xs font-medium text-purple-700 hover:text-purple-900 py-1 flex items-center gap-2 cursor-pointer"
+                      >
+                        <ShieldAlert className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Admin Console</span>
+                      </button>
+
                       <button
                         type="button"
                         onClick={handleSignOut}
-                        className="w-full text-left text-xs font-semibold text-red-600 hover:text-red-700 pt-1 border-t border-stone-100 flex items-center gap-2"
+                        className="w-full text-left text-xs font-semibold text-rose-600 hover:text-rose-700 pt-2 border-t border-stone-100 flex items-center gap-2 cursor-pointer"
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Sign Out</span>
@@ -916,373 +1113,150 @@ export default function App() {
                     </div>
                   </>
                 )}
-              </>
+              </div>
             ) : (
               <button
                 type="button"
                 onClick={() => openAuthPrompt()}
-                className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-[#1E332A] rounded-full hover:bg-[#14241D] transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#0F1E36] rounded-xl hover:bg-[#1E3A8A] transition-colors whitespace-nowrap cursor-pointer shadow-xs"
               >
-                <UserCircle className="w-4 h-4 text-amber-200 shrink-0" />
+                <UserCircle className="w-4 h-4 text-teal-300 shrink-0" />
                 <span>Sign In</span>
               </button>
             )}
+
+            {/* Mobile Hamburger Toggle */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-label="Toggle mobile menu"
+              className="lg:hidden p-2 rounded-xl bg-stone-100 text-slate-800 hover:bg-stone-200 transition-colors cursor-pointer"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-stone-200 bg-white px-4 py-4 space-y-2 animate-in slide-in-from-top-4 duration-200 shadow-xl">
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('dashboard')}
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
+            >
+              <span>Home</span>
+              <ChevronRight className="w-4 h-4 text-stone-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('destinations')}
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
+            >
+              <span>Explore Destinations</span>
+              <ChevronRight className="w-4 h-4 text-stone-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('packages')}
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
+            >
+              <span>Tour Packages</span>
+              <ChevronRight className="w-4 h-4 text-stone-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('guides')}
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
+            >
+              <span>Local Guides</span>
+              <ChevronRight className="w-4 h-4 text-stone-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('builder')}
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
+            >
+              <span>Trip Planner</span>
+              <ChevronRight className="w-4 h-4 text-stone-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('transport')}
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
+            >
+              <span>Find Transport</span>
+              <ChevronRight className="w-4 h-4 text-stone-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('hotels')}
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
+            >
+              <span>Hotels & Rooms</span>
+              <ChevronRight className="w-4 h-4 text-stone-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('budget')}
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
+            >
+              <span>My Bookings & Budget</span>
+              <ChevronRight className="w-4 h-4 text-stone-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setAboutUsModalOpen(true);
+              }}
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
+            >
+              <span>About Us</span>
+              <ChevronRight className="w-4 h-4 text-stone-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setContactModalOpen(true);
+              }}
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
+            >
+              <span>Contact Support</span>
+              <ChevronRight className="w-4 h-4 text-stone-400" />
+            </button>
+          </div>
+        )}
       </header>
 
-      {/* Email & Password Authentication Modal (Opens First When Unauthenticated User Clicks Anywhere) */}
-      {authModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div data-auth-modal className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-stone-200/90 overflow-hidden">
-            {/* Modal Header Banner */}
-            <div className="bg-[#1E332A] text-white px-6 py-6 relative">
-              <button
-                type="button"
-                onClick={() => setAuthModalOpen(false)}
-                aria-label="Close Sign In Modal"
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center text-amber-200 shrink-0">
-                  <UserCircle className="w-7 h-7" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold font-serif-display text-white">
-                    {authMode === 'signin'
-                      ? 'Sign In to TripTogether'
-                      : authMode === 'signup'
-                      ? 'Create Your Account'
-                      : 'Reset Your Password'}
-                  </h2>
-                  <p className="text-xs text-stone-300 mt-0.5">
-                    {authMode === 'forgot'
-                      ? 'Enter your Email ID and set a new password to recover your account'
-                      : 'Enter your Email ID and password to explore destinations, transport & stays'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Form Body */}
-            <form onSubmit={handleAuthSubmit} className="p-6 space-y-4">
-              {/* Mode Switch Tabs */}
-              <div className="grid grid-cols-2 gap-1 p-1 bg-stone-100 rounded-full text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode('signin');
-                    setAuthError(null);
-                  }}
-                  className={`py-2 rounded-full transition-colors ${
-                    authMode === 'signin'
-                      ? 'bg-[#1E332A] text-white shadow-2xs'
-                      : 'text-stone-600 hover:text-slate-900'
-                  }`}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode('signup');
-                    setAuthError(null);
-                  }}
-                  className={`py-2 rounded-full transition-colors ${
-                    authMode === 'signup'
-                      ? 'bg-[#1E332A] text-white shadow-2xs'
-                      : 'text-stone-600 hover:text-slate-900'
-                  }`}
-                >
-                  Create Account
-                </button>
-              </div>
-
-              {authError && (
-                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-medium text-red-700">
-                  {authError}
-                </div>
-              )}
-
-              {authMode === 'signup' && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Full Name
-                  </label>
-                  <div className="relative">
-                    <UserCircle className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={authName}
-                      onChange={(e) => setAuthName(e.target.value)}
-                      placeholder="Enter your name"
-                      className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-stone-50 border border-stone-300 rounded-xl focus:outline-none focus:border-[#1E332A]"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Email ID
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="email"
-                    required
-                    autoFocus
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-stone-50 border border-stone-300 rounded-xl focus:outline-none focus:border-[#1E332A]"
-                  />
-                </div>
-                {authMode !== 'forgot' && (
-                  <div className="mt-1.5 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthMode('forgot');
-                        setAuthError(null);
-                      }}
-                      className="text-xs font-semibold text-[#1E332A] hover:underline cursor-pointer"
-                    >
-                      Forgot Password?
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-700">
-                    {authMode === 'forgot' ? 'New Password' : 'Password'}
-                  </label>
-                  {authMode === 'forgot' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthMode('signin');
-                        setAuthError(null);
-                      }}
-                      className="text-xs font-semibold text-[#1E332A] hover:underline cursor-pointer"
-                    >
-                      ← Back to Sign In
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="password"
-                    required
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    placeholder={
-                      authMode === 'forgot'
-                        ? 'Enter your new password (min 4 chars)'
-                        : 'Enter your password'
-                    }
-                    className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-stone-50 border border-stone-300 rounded-xl focus:outline-none focus:border-[#1E332A]"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={authSubmitting}
-                className="w-full py-3 text-xs sm:text-sm font-bold tracking-wide text-white bg-[#1E332A] hover:bg-[#14241D] rounded-full shadow-md transition-colors cursor-pointer disabled:opacity-50"
-              >
-                {authSubmitting
-                  ? 'Authenticating...'
-                  : authMode === 'signin'
-                  ? 'Sign In & Continue'
-                  : authMode === 'signup'
-                  ? 'Create Account & Continue'
-                  : 'Reset Password & Sign In'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Manage Custom Travelers & Names Modal */}
-      {manageMembersModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div data-auth-modal className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-stone-200/90 overflow-hidden">
-            {/* Modal Header */}
-            <div className="bg-[#1E332A] text-white px-6 py-5 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold font-serif-display">Customize Travelers & Names</h3>
-                <p className="text-xs text-stone-300 mt-0.5">
-                  Set custom traveler names, roles, and participant counts
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setManageMembersModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
-              <div className="space-y-3">
-                <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  Current Travelers ({familyMembers.length})
-                </label>
-                {familyMembers.map((member, idx) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center gap-2 p-3 bg-stone-50 border border-stone-200 rounded-xl"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-[#1E332A] text-white text-xs font-bold flex items-center justify-center shrink-0">
-                      {member.avatarInitials}
-                    </div>
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={member.name}
-                        onChange={(e) => handleUpdateMemberName(member.id, e.target.value)}
-                        placeholder={`Traveler ${idx + 1} Name`}
-                        className="w-full px-2.5 py-1.5 text-xs font-semibold bg-white border border-stone-300 rounded-lg text-slate-900 focus:outline-none focus:border-[#1E332A]"
-                      />
-                    </div>
-                    <select
-                      value={member.role}
-                      onChange={(e) => handleUpdateMemberRole(member.id, e.target.value as FamilyMember['role'])}
-                      className="px-2 py-1.5 text-xs bg-white border border-stone-300 rounded-lg text-slate-700"
-                    >
-                      <option value="Organizer">Organizer</option>
-                      <option value="Co-Traveler">Co-Traveler</option>
-                      <option value="Senior Citizen">Senior Citizen</option>
-                      <option value="Child">Child</option>
-                      <option value="Relative">Relative</option>
-                      <option value="Friend">Friend</option>
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveCustomMember(member.id)}
-                      disabled={familyMembers.length <= 1}
-                      title="Remove Traveler"
-                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200 transition-colors disabled:opacity-30 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {/* Add New Traveler Form */}
-              <div className="pt-4 border-t border-stone-200 space-y-2">
-                <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  Add New Custom Traveler
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newMemberNameInput}
-                    onChange={(e) => setNewMemberNameInput(e.target.value)}
-                    placeholder="Enter name (e.g. John, Madhuri, Rahul...)"
-                    className="flex-1 px-3 py-2 text-xs bg-white border border-stone-300 rounded-lg text-slate-900 focus:outline-none focus:border-[#1E332A]"
-                  />
-                  <select
-                    value={newMemberRoleInput}
-                    onChange={(e) => setNewMemberRoleInput(e.target.value as FamilyMember['role'])}
-                    className="px-2.5 py-2 text-xs bg-white border border-stone-300 rounded-lg text-slate-700"
-                  >
-                    <option value="Organizer">Organizer</option>
-                    <option value="Co-Traveler">Co-Traveler</option>
-                    <option value="Senior Citizen">Senior Citizen</option>
-                    <option value="Child">Child</option>
-                    <option value="Relative">Relative</option>
-                    <option value="Friend">Friend</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleAddCustomMember(newMemberNameInput, newMemberRoleInput);
-                      setNewMemberNameInput('');
-                    }}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-[#1E332A] hover:bg-[#14241D] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-xs active:scale-95"
-                  >
-                    + Invite / Add
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="bg-stone-50 px-6 py-4 border-t border-stone-200 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-medium text-stone-600">
-                  {familyMembers.length} Custom Traveler(s) participating
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const inviteUrl = `${window.location.origin}/?joinFamilyGroup=TT-KAKINADA-TPTY-8492`;
-                    try {
-                      navigator.clipboard.writeText(inviteUrl);
-                    } catch {}
-                    setToastMessage('✓ Group invite link copied to clipboard!');
-                    setTimeout(() => setToastMessage(null), 3000);
-                  }}
-                  className="text-xs font-semibold text-[#1E332A] hover:underline cursor-pointer"
-                >
-                  Copy Group Invite Link
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setManageMembersModalOpen(false)}
-                className="px-5 py-2 text-xs font-bold text-white bg-[#1E332A] hover:bg-[#14241D] rounded-full transition-colors cursor-pointer"
-              >
-                Save & Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Notification Toast when Shortlisting, Searching, or Signing In */}
-      {toastMessage && (
-        <div className="bg-[#1E332A] text-white px-6 py-3 text-xs font-medium flex items-center justify-between max-w-[1440px] w-full mx-auto">
-          <span>{toastMessage}</span>
-          <button
-            type="button"
-            onClick={() => navigateAndScroll('budget')}
-            className="underline font-semibold ml-4 whitespace-nowrap shrink-0"
-          >
-            Open Budget Ledger →
-          </button>
-        </div>
-      )}
-
-      {/* Main Content Area — Intercepts any click if user is not signed in */}
-      <main className="flex-1 w-full" onClickCapture={handleUnauthenticatedClickCapture}>
-        {activeSection === 'dashboard' ? (
+      {/* MAIN VIEW SWITCHER */}
+      <main className="flex-1">
+        {/* HOMEPAGE VIEW */}
+        {activeSection === 'dashboard' && (
           <div>
-            {/* 1. Full-Bleed Scenic Hero Section with Clean Search Bar at the Top of Main Section */}
-            <section className="relative w-full min-h-[560px] lg:min-h-[620px] flex flex-col items-center justify-between text-center px-4 sm:px-6 pt-8 pb-16 overflow-visible">
+            {/* 1. HERO SECTION */}
+            <section className="relative w-full min-h-[580px] lg:min-h-[640px] flex flex-col items-center justify-between text-center px-4 sm:px-6 pt-10 pb-16 overflow-visible">
               <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <img
                   src={heroTirupatiImg}
-                  alt="Sunrise over Tirumala Seshachalam Hills"
+                  alt="Scenic Travel Hero"
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
                 />
-                {/* Warm sunlit scrim for high contrast */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/35 to-black/65" />
+                <div className="absolute inset-0 bg-gradient-to-b from-[#0F1E36]/80 via-[#0F1E36]/60 to-[#0F1E36]/90" />
               </div>
 
-              {/* Interactive Search Bar with Real-Time Destination Autocomplete */}
+              {/* Real-Time Destination Search Bar */}
               <div className="relative z-30 w-full max-w-2xl mx-auto">
                 <DestinationSearchBar
                   value={searchQuery}
@@ -1291,66 +1265,67 @@ export default function App() {
                   onSelectDestination={handleSelectDestination}
                   onClearDestination={handleClearDestination}
                   selectedDestination={selectedDestination}
-                  placeholder="Where do you want to go?"
+                  placeholder="Where do you want to go? Search cities, states, temples..."
                   variant="hero"
                 />
               </div>
 
-              {/* Center Hero Headline & CTAs */}
-              <div className="relative z-10 max-w-3xl mx-auto text-white space-y-5 my-auto pt-8">
+              {/* Hero Headline & Subtitle */}
+              <div className="relative z-10 max-w-3xl mx-auto text-white space-y-5 my-auto pt-6">
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.12] font-serif-display text-white">
-                  Experience Sacred Journeys Like Never Before
+                  Your Next Adventure Starts Here.
                 </h1>
-                <p className="text-sm sm:text-base text-stone-100/95 max-w-xl mx-auto leading-relaxed">
-                  Discover curated family escapes, compare real rail, bus, and air connections, book budget-verified stays, and travel together seamlessly.
+
+                <p className="text-sm sm:text-base text-stone-200 max-w-xl mx-auto leading-relaxed">
+                  Discover incredible destinations, plan unforgettable journeys, and connect with trusted local guides.
                 </p>
 
                 <div className="pt-2 flex flex-wrap items-center justify-center gap-4">
                   <button
                     type="button"
-                    onClick={() => navigateAndScroll('transport')}
-                    className="px-7 py-3 text-xs sm:text-sm font-semibold text-white bg-[#1E332A] hover:bg-[#14241D] rounded-full shadow-md transition-colors whitespace-nowrap shrink-0"
+                    onClick={() => navigateAndScroll('destinations')}
+                    className="px-8 py-3.5 text-xs sm:text-sm font-bold text-white bg-[#0D9488] hover:bg-[#0f766e] rounded-xl shadow-lg transition-all hover:scale-102 cursor-pointer"
                   >
                     Explore Destinations
                   </button>
                   <button
                     type="button"
-                    onClick={() => navigateAndScroll('hotels')}
-                    className="px-7 py-3 text-xs sm:text-sm font-semibold text-slate-900 bg-white hover:bg-stone-100 rounded-full shadow-md transition-colors whitespace-nowrap shrink-0"
+                    onClick={() => navigateAndScroll('builder')}
+                    className="px-8 py-3.5 text-xs sm:text-sm font-bold text-slate-900 bg-white hover:bg-stone-100 rounded-xl shadow-lg transition-all hover:scale-102 cursor-pointer"
                   >
-                    Book Your Stay
+                    Plan My Trip
                   </button>
                 </div>
               </div>
             </section>
 
-            {/* Main Container Content */}
-            <div className="max-w-[1280px] mx-auto px-6 lg:px-10 py-16 space-y-16">
-              {/* Interactive Customized Route & Travelers Bar */}
-              <section className="bg-white rounded-2xl border border-stone-200/90 p-5 shadow-xs">
+            {/* Container Body */}
+            <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-16 space-y-20">
+              {/* Customized Route & Travelers Bar */}
+              <section className="bg-white rounded-3xl border border-stone-200/90 p-5 shadow-xs">
                 <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-9 h-9 rounded-xl bg-[#1E332A] text-amber-300 flex items-center justify-center shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-teal-50 text-[#0D9488] flex items-center justify-center shrink-0">
                       <Compass className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">Customized Trip Route, Date & Travelers</h3>
+                      <h3 className="text-sm font-bold text-slate-900">Customized Trip Route & Travelers</h3>
                       <p className="text-xs text-stone-500">
-                        Customize pickup, destination, planned travel date, and participating traveler names
+                        Customize pickup, destination, travel date, and travel party
                       </p>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    {/* Pickup Input */}
+                    {/* Pickup */}
                     <div className="flex items-center gap-1.5 px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl">
                       <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                      <span className="text-[11px] font-bold uppercase text-stone-500">Pickup:</span>
+                      <span className="text-[10px] font-bold uppercase text-stone-400">Pickup:</span>
                       <input
                         type="text"
                         value={tripParams.origin}
                         onChange={(e) => setTripParams((p) => ({ ...p, origin: e.target.value }))}
-                        placeholder="Pickup Location"
+                        placeholder="Pickup City"
                         className="w-28 sm:w-36 text-xs font-semibold text-slate-900 bg-transparent focus:outline-none"
                       />
                     </div>
@@ -1365,28 +1340,28 @@ export default function App() {
                         }))
                       }
                       title="Swap Pickup and Destination"
-                      className="p-2 text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-xl border border-stone-200 transition-colors text-xs font-bold shrink-0 cursor-pointer"
+                      className="p-2 text-stone-600 hover:text-slate-900 hover:bg-stone-100 rounded-xl border border-stone-200 transition-colors text-xs font-bold cursor-pointer"
                     >
                       ⇄
                     </button>
 
-                    {/* Destination Input */}
+                    {/* Destination */}
                     <div className="flex items-center gap-1.5 px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl">
-                      <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span className="text-[11px] font-bold uppercase text-stone-500">Destination:</span>
+                      <MapPin className="w-3.5 h-3.5 text-[#0D9488] shrink-0" />
+                      <span className="text-[10px] font-bold uppercase text-stone-400">Destination:</span>
                       <input
                         type="text"
                         value={tripParams.destination}
                         onChange={(e) => setTripParams((p) => ({ ...p, destination: e.target.value }))}
-                        placeholder="Destination"
+                        placeholder="Destination City"
                         className="w-28 sm:w-36 text-xs font-semibold text-slate-900 bg-transparent focus:outline-none"
                       />
                     </div>
 
-                    {/* Planned Date Input */}
+                    {/* Planned Date */}
                     <div className="flex items-center gap-1.5 px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl">
-                      <Calendar className="w-3.5 h-3.5 text-[#1E332A] shrink-0" />
-                      <span className="text-[11px] font-bold uppercase text-stone-500">Planned Date:</span>
+                      <Calendar className="w-3.5 h-3.5 text-[#0D9488] shrink-0" />
+                      <span className="text-[10px] font-bold uppercase text-stone-400">Date:</span>
                       <input
                         type="date"
                         value={tripParams.travelDate}
@@ -1400,831 +1375,1396 @@ export default function App() {
                           }
                         }}
                         className="text-xs font-semibold text-slate-900 bg-transparent focus:outline-none cursor-pointer"
-                        title="Customize your planned travel date"
                       />
                     </div>
 
-                    {/* Travelers & Manage Names Button */}
+                    {/* Manage Travelers */}
                     <button
                       type="button"
                       onClick={() => setManageMembersModalOpen(true)}
-                      className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[#1E332A] bg-stone-100 hover:bg-stone-200 border border-stone-200 rounded-xl transition-colors shrink-0 cursor-pointer"
+                      className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[#0F1E36] bg-stone-100 hover:bg-stone-200 border border-stone-200 rounded-xl transition-colors cursor-pointer"
                     >
-                      <Users className="w-3.5 h-3.5" />
+                      <Users className="w-3.5 h-3.5 text-[#0D9488]" />
                       <span>{familyMembers.length} Travelers: {familyMembers.map((m) => m.name.split(' ')[0]).join(', ')}</span>
-                      <span className="text-[11px] underline font-bold ml-1">Edit Names →</span>
+                      <span className="text-[11px] underline font-bold ml-1 text-[#0D9488]">Edit →</span>
                     </button>
                   </div>
                 </div>
               </section>
 
-              {/* 3. Popular Destinations & Trip Modules (4 Numbered Portrait Cards matching Reference Image) */}
-              <section className="space-y-8">
-                <div className="text-center space-y-2">
-                  <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 font-serif-display">
-                    Popular Destinations & Trip Modules
-                  </h2>
-                  <p className="text-xs sm:text-sm text-stone-600 max-w-xl mx-auto">
-                    Compare verified routes from {tripParams.origin} to {tripParams.destination} for {familyMembers.length} travelers · Planned Date: <strong className="text-slate-900">{tripParams.travelDate}</strong>
-                  </p>
+              {/* POPULAR DESTINATIONS SECTION */}
+              <section id="destinations-section" className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0D9488] text-xs font-semibold mb-2">
+                      <Compass className="w-3.5 h-3.5" />
+                      <span>Curated India & Beyond</span>
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif-display">
+                      Popular Destinations
+                    </h2>
+                    <p className="text-xs sm:text-sm text-stone-600 max-w-xl mt-1">
+                      Explore handpicked destinations with genuine travel insights, seasonal budget benchmarks, and certified local guides.
+                    </p>
+                  </div>
+
+                  {/* Category Filter Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    {['All', 'Pilgrimage', 'Hill Station', 'Coastal & Beach', 'Heritage & Culture', 'Adventure'].map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setDestinationCategoryFilter(cat)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
+                          destinationCategoryFilter === cat
+                            ? 'bg-[#0F1E36] text-white shadow-xs'
+                            : 'bg-white border border-stone-200 text-slate-600 hover:bg-stone-50'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
+                {/* Destinations Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {/* Card 1 */}
-                  <div
-                    onClick={() => navigateAndScroll('transport')}
-                    className="group cursor-pointer bg-white rounded-2xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-                  >
-                    <div className="relative h-60 overflow-hidden">
-                      <img
-                        src={kakinadaGatewayImg}
-                        alt="Rail & Bus Transport"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
-                      <span className="absolute top-3.5 left-3.5 w-7 h-7 rounded-full bg-[#1E332A] text-white text-xs font-bold font-mono-num flex items-center justify-center">
-                        1
-                      </span>
-                      <div className="absolute bottom-3 left-3.5 right-3.5 text-white text-xs font-medium flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                        <span className="truncate">{tripParams.origin} → {tripParams.destination}</span>
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="text-base font-bold text-slate-900">
-                        Express Trains, APSRTC & Flights
-                      </h3>
-                      <div className="mt-2 flex items-center justify-between text-xs font-mono-num">
-                        <span className="text-stone-500">From ₹345/pax</span>
-                        <span className="font-bold text-[#1E332A]">
-                          ₹{(345 * tripParams.travellers * 2).toLocaleString('en-IN')} Family
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  {filteredDestinations.map((dest) => (
+                    <div
+                      key={dest.id}
+                      className="group bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+                    >
+                      <div className="relative h-56 overflow-hidden">
+                        <img
+                          src={dest.image}
+                          alt={dest.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
 
-                  {/* Card 2 */}
-                  <div
-                    onClick={() => navigateAndScroll('hotels')}
-                    className="group cursor-pointer bg-white rounded-2xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-                  >
-                    <div className="relative h-60 overflow-hidden">
-                      <img
-                        src={tirupatiHotelImg}
-                        alt="Tirupati Family Stays & Choultries"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
-                      <span className="absolute top-3.5 left-3.5 w-7 h-7 rounded-full bg-[#1E332A] text-white text-xs font-bold font-mono-num flex items-center justify-center">
-                        2
-                      </span>
-                      <div className="absolute bottom-3 left-3.5 right-3.5 text-white text-xs font-medium flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                        <span className="truncate">Alipiri & Railway Station</span>
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="text-base font-bold text-slate-900">
-                        TTD Choultries & Family Hotels
-                      </h3>
-                      <div className="mt-2 flex items-center justify-between text-xs font-mono-num">
-                        <span className="text-stone-500">₹200 – ₹2,800/nt</span>
-                        <span className="font-bold text-[#1E332A]">
-                          {TIRUPATI_HOTELS.length} Verified Stays
+                        {/* Category Badge */}
+                        <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-slate-900/70 backdrop-blur-xs text-white text-[11px] font-semibold">
+                          {dest.category}
                         </span>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Card 3 */}
-                  <div
-                    onClick={() => navigateAndScroll('packages')}
-                    className="group cursor-pointer bg-white rounded-2xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-                  >
-                    <div className="relative h-60 overflow-hidden">
-                      <img
-                        src={heroTirupatiImg}
-                        alt="Tirumala Hills & APTDC Packages"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
-                      <span className="absolute top-3.5 left-3.5 w-7 h-7 rounded-full bg-[#1E332A] text-white text-xs font-bold font-mono-num flex items-center justify-center">
-                        3
-                      </span>
-                      <div className="absolute bottom-3 left-3.5 right-3.5 text-white text-xs font-medium flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                        <span className="truncate">Tirumala & Padmavathi Circuit</span>
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="text-base font-bold text-slate-900">
-                        APTDC & IRCTC Darshan Tours
-                      </h3>
-                      <div className="mt-2 flex items-center justify-between text-xs font-mono-num">
-                        <span className="text-stone-500">₹1,450+/adult</span>
-                        <span className="font-bold text-[#1E332A]">
-                          ₹{(1450 * tripParams.travellers).toLocaleString('en-IN')}+ Total
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                        {/* Wishlist Heart Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleWishlistDest(dest.name)}
+                          aria-label={`Save ${dest.name} to wishlist`}
+                          className="absolute top-3 right-3 p-1.5 rounded-full bg-white/80 backdrop-blur-xs hover:bg-white text-rose-500 shadow-xs transition-colors cursor-pointer"
+                        >
+                          <Heart
+                            className={`w-4 h-4 ${
+                              wishlistDestinations.includes(dest.name)
+                                ? 'fill-rose-500 text-rose-500'
+                                : 'text-slate-400'
+                            }`}
+                          />
+                        </button>
 
-                  {/* Card 4 */}
-                  <div
-                    onClick={() => navigateAndScroll('builder')}
-                    className="group cursor-pointer bg-white rounded-2xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-                  >
-                    <div className="relative h-60 overflow-hidden">
-                      <img
-                        src={chandragiriTourImg}
-                        alt="Chandragiri Fort & Srikalahasti Heritage"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
-                      <span className="absolute top-3.5 left-3.5 w-7 h-7 rounded-full bg-[#1E332A] text-white text-xs font-bold font-mono-num flex items-center justify-center">
-                        4
-                      </span>
-                      <div className="absolute bottom-3 left-3.5 right-3.5 text-white text-xs font-medium flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                        <span className="truncate">Srikalahasti & Chandragiri Fort</span>
+                        <div className="absolute bottom-3 left-3.5 right-3.5 text-white">
+                          <h3 className="text-lg font-bold font-serif-display drop-shadow-sm">
+                            {dest.name}
+                          </h3>
+                          <p className="text-xs text-stone-200 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-teal-300 shrink-0" />
+                            <span className="truncate">{dest.state}, {dest.country}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                        <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                          {dest.description}
+                        </p>
+
+                        <div className="space-y-2 pt-2 border-t border-stone-100 text-xs">
+                          <div className="flex justify-between text-stone-500">
+                            <span>Best Season:</span>
+                            <span className="font-semibold text-slate-800">{dest.bestSeason}</span>
+                          </div>
+                          <div className="flex justify-between text-stone-500">
+                            <span>Approx Budget:</span>
+                            <span className="font-semibold text-[#0D9488] font-mono-num">{dest.approxNightBudget}/nt</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setActiveDestinationModal(dest)}
+                            className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-stone-100 hover:bg-[#0F1E36] text-slate-800 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                          >
+                            <span>Explore Destination</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div className="p-4">
-                      <h3 className="text-base font-bold text-slate-900">
-                        Custom 3-Day AI Itinerary
-                      </h3>
-                      <div className="mt-2 flex items-center justify-between text-xs font-mono-num">
-                        <span className="text-stone-500">3 Days / 2 Nights</span>
-                        <span className="font-bold text-[#1E332A]">
-                          ₹11,280 On-Ground
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </section>
 
-              {/* 4. 4-Column Trust & Capability Strip (Matching Reference Layout) */}
-              <section className="bg-white rounded-2xl border border-stone-200/90 px-6 py-6 shadow-2xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 divide-y sm:divide-y-0 lg:divide-x divide-stone-200">
-                  <div className="flex items-center gap-3.5 pt-2 sm:pt-0">
-                    <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-[#1E332A] shrink-0">
-                      <Award className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">Transparent Family Fares</h3>
-                      <p className="text-xs text-stone-500">
-                        Official IRCTC, APSRTC & TTD tariffs
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3.5 pt-4 sm:pt-0 lg:pl-6">
-                    <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-[#1E332A] shrink-0">
-                      <Building2 className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">Handpicked Family Stays</h3>
-                      <p className="text-xs text-stone-500">
-                        Per-night vs entire-stay budget math
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3.5 pt-4 sm:pt-0 lg:pl-6">
-                    <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-[#1E332A] shrink-0">
-                      <Clock className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">Urgent & Tatkal Ready</h3>
-                      <p className="text-xs text-stone-500">
-                        Today, tomorrow & advance date planning
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3.5 pt-4 sm:pt-0 lg:pl-6">
-                    <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-[#1E332A] shrink-0">
-                      <ShieldCheck className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">Safe & Consent-Based</h3>
-                      <p className="text-xs text-stone-500">
-                        Private family GPS & zero fake claims
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* 5. "Plan Your Perfect Trip" 2-Column Split Section (Matching Reference Layout) */}
-              <section className="space-y-8">
-                <div className="text-center">
-                  <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 font-serif-display">
-                    Plan Your Perfect Trip
-                  </h2>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-                  <div className="lg:col-span-7 rounded-2xl overflow-hidden border border-stone-200 min-h-[340px]">
-                    <img
-                      src={heroTirupatiImg}
-                      alt="Seshachalam Hills and Tirumala Valley"
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-
-                  <div className="lg:col-span-5 flex flex-col justify-between space-y-6 py-2">
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-bold text-slate-900 font-serif-display">
-                          Tailored Itineraries & AI Budget Advisor
-                        </h3>
-                        <p className="text-xs sm:text-sm text-stone-600 mt-1 leading-relaxed">
-                          Generate a customized day-by-day schedule for {tripParams.travellers} family members—accounting for early morning 04:25 AM rail arrivals, Alipiri Sapthagiri electric bus timings, and senior citizen rest windows.
-                        </p>
-                      </div>
-
-                      <div>
-                        <h3 className="text-lg font-bold text-slate-900 font-serif-display">
-                          Verified Official Portal Access
-                        </h3>
-                        <p className="text-xs sm:text-sm text-stone-600 mt-1 leading-relaxed">
-                          Direct links to TTD Devasthanams, IRCTC, APSRTC, and APTDC Haritha portals with clear differentiation between per-night room budgets and entire-stay budgets.
-                        </p>
-                      </div>
-
-                      <div>
-                        <h3 className="text-lg font-bold text-slate-900 font-serif-display">
-                          Live Family Collaboration
-                        </h3>
-                        <p className="text-xs sm:text-sm text-stone-600 mt-1 leading-relaxed">
-                          Coordinate with relatives using the private family chat, quantity-tracked packing checklist ({packingProgressPct}% packed), and opt-in browser GPS location sharing.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 flex flex-wrap items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => navigateAndScroll('builder')}
-                        className="px-6 py-3 text-xs font-semibold text-white bg-[#1E332A] hover:bg-[#14241D] rounded-full transition-colors whitespace-nowrap shrink-0"
-                      >
-                        Start Planning
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => navigateAndScroll('tracking')}
-                        className="px-6 py-3 text-xs font-semibold text-[#1E332A] bg-white border border-stone-300 hover:bg-stone-100 rounded-full transition-colors whitespace-nowrap shrink-0"
-                      >
-                        Open Family Live Map
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* 6. 3-Column Family Collaboration Highlights Strip (Matching Reference Testimonial Strip) */}
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('tracking')}
-                  className="bg-white rounded-2xl border border-stone-200/90 p-5 flex items-center gap-4 text-left hover:shadow-sm transition-shadow"
-                >
-                  <div className="w-12 h-12 rounded-full bg-[#1E332A] text-white font-bold text-sm flex items-center justify-center shrink-0">
-                    GPS
-                  </div>
+              {/* FEATURED TOUR PACKAGES SECTION */}
+              <section id="packages-section" className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Consent-Based Live Tracking
-                    </h3>
-                    <p className="text-xs text-stone-500 mt-0.5">
-                      {familyMembers.filter((m) => m.locationSharingConsent).length} of {familyMembers.length} members sharing live location on route
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold mb-2">
+                      <Package className="w-3.5 h-3.5" />
+                      <span>Verified Itineraries</span>
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif-display">
+                      Featured Tour Packages
+                    </h2>
+                    <p className="text-xs sm:text-sm text-stone-600 max-w-xl mt-1">
+                      All-inclusive family journeys with transparent day-by-day itineraries, verified accommodations, and guaranteed zero hidden tariffs.
                     </p>
                   </div>
-                </button>
 
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('chat')}
-                  className="bg-white rounded-2xl border border-stone-200/90 p-5 flex items-center gap-4 text-left hover:shadow-sm transition-shadow"
-                >
-                  <div className="w-12 h-12 rounded-full bg-amber-700 text-white font-bold text-sm flex items-center justify-center shrink-0">
-                    CHAT
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Private Family Group Chat
-                    </h3>
-                    <p className="text-xs text-stone-500 mt-0.5">
-                      {chatMessages.length} shared messages, train links & Aadhaar reminders
-                    </p>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('checklist')}
-                  className="bg-white rounded-2xl border border-stone-200/90 p-5 flex items-center gap-4 text-left hover:shadow-sm transition-shadow"
-                >
-                  <div className="w-12 h-12 rounded-full bg-emerald-800 text-white font-bold text-sm flex items-center justify-center shrink-0 font-mono-num">
-                    {packingProgressPct}%
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Shared Packing Checklist
-                    </h3>
-                    <p className="text-xs text-stone-500 mt-0.5">
-                      {totalPackedUnits}/{totalRequiredUnits} family units packed across 7 categories
-                    </p>
-                  </div>
-                </button>
-              </section>
-
-              {/* 7. Travel Guides & Essential Pilgrimage Insights (Matching "Travel Blog" 3-Card Row) */}
-              <section className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif-display">
-                    Tirupati & Kakinada Corridor Travel Guides
-                  </h2>
                   <button
                     type="button"
-                    onClick={() => navigateAndScroll('budget')}
-                    className="text-xs font-semibold text-[#1E332A] hover:underline whitespace-nowrap shrink-0"
+                    onClick={() => navigateAndScroll('packages')}
+                    className="text-xs font-bold text-[#0D9488] hover:underline flex items-center gap-1 cursor-pointer shrink-0"
                   >
-                    Open My Bookings & Ledger →
+                    <span>View All Packages</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-white rounded-2xl border border-stone-200/90 p-6 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900">
-                        Direct CCT Boarding vs Samalkot Junction
-                      </h3>
-                      <p className="text-xs text-stone-600 mt-2 leading-relaxed">
-                        Train 17250 originates directly at Kakinada Town (CCT) at 15:10, whereas Train 17488 Tirumala Express boards at Samalkot Jn (12 km away). Compare both for senior citizen convenience.
-                      </p>
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-400">
-                      <span>Verified Rail Guide · SCR</span>
-                      <button
-                        type="button"
-                        onClick={() => navigateAndScroll('transport')}
-                        className="text-[#1E332A] font-semibold hover:underline"
-                      >
-                        Compare Trains →
-                      </button>
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {packages.slice(0, 3).map((pkg) => (
+                    <div
+                      key={pkg.id}
+                      className="bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+                    >
+                      <div className="relative h-52 overflow-hidden">
+                        <img
+                          src={pkg.coverImage}
+                          alt={pkg.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
 
-                  <div className="bg-white rounded-2xl border border-stone-200/90 p-6 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900">
-                        TTD Darshan Quotas & SSD Token Rules
-                      </h3>
-                      <p className="text-xs text-stone-600 mt-2 leading-relaxed">
-                        ₹300 Special Entry Darshan opens online in advance on the official TTD portal. For urgent trips, obtain Slotted Sarva Darshan (SSD) tokens at Srinivasam or Vishnu Nivasam with original Aadhaar.
-                      </p>
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-400">
-                      <span>Official TTD Policy</span>
-                      <button
-                        type="button"
-                        onClick={() => navigateAndScroll('packages')}
-                        className="text-[#1E332A] font-semibold hover:underline"
-                      >
-                        View Packages →
-                      </button>
-                    </div>
-                  </div>
+                        <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-bold">
+                          {pkg.duration}
+                        </span>
 
-                  <div className="bg-white rounded-2xl border border-stone-200/90 p-6 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900">
-                        Per-Night vs Entire-Stay Hotel Budgeting
-                      </h3>
-                      <p className="text-xs text-stone-600 mt-2 leading-relaxed">
-                        Whether your family budgets ₹2,000 per room per night (₹6,000 for 3 nights) or ₹2,000 for the entire 3-night stay (TTD Srinivasam ₹200–₹400/night), never confuse the two calculations.
-                      </p>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleWishlistPkg(pkg.id)}
+                          aria-label={`Save ${pkg.title} to wishlist`}
+                          className="absolute top-3 right-3 p-1.5 rounded-full bg-white/80 backdrop-blur-xs hover:bg-white text-rose-500 shadow-xs transition-colors cursor-pointer"
+                        >
+                          <Heart
+                            className={`w-4 h-4 ${
+                              wishlistPackages.includes(pkg.id)
+                                ? 'fill-rose-500 text-rose-500'
+                                : 'text-slate-400'
+                            }`}
+                          />
+                        </button>
+
+                        <div className="absolute bottom-3 left-3.5 right-3.5 text-white">
+                          <span className="text-[11px] text-teal-300 font-semibold">{pkg.destination}</span>
+                          <h3 className="text-base font-bold font-serif-display drop-shadow-sm leading-tight mt-0.5">
+                            {pkg.title}
+                          </h3>
+                        </div>
+                      </div>
+
+                      <div className="p-5 space-y-4 flex-1 flex flex-col justify-between">
+                        <div className="space-y-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 block">
+                            Key Highlights:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {pkg.highlights.slice(0, 3).map((h) => (
+                              <span
+                                key={h}
+                                className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 text-[11px]"
+                              >
+                                {h}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-stone-100 flex items-center justify-between">
+                          <div>
+                            <span className="text-[11px] text-stone-400 block">Price Per Person</span>
+                            <div className="text-xl font-bold text-slate-900 font-mono-num">
+                              ₹{pkg.pricePerPerson.toLocaleString('en-IN')}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setActivePackageModal(pkg)}
+                              className="px-3 py-2 rounded-xl border border-stone-300 text-xs font-semibold text-slate-700 hover:bg-stone-50 transition-colors cursor-pointer"
+                            >
+                              Details
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setActiveBookingModal(pkg)}
+                              className="px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                            >
+                              Book Now
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-400">
-                      <span>Transparent Stay Calculator</span>
-                      <button
-                        type="button"
-                        onClick={() => navigateAndScroll('hotels')}
-                        className="text-[#1E332A] font-semibold hover:underline"
-                      >
-                        Filter Hotels →
-                      </button>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </section>
-            </div>
 
-            {/* 8. Family Trip Alert & Darshan Quota Subscription Banner */}
-            <section className="bg-[#EAE6DF] border-t border-stone-200/80 py-12 px-6">
-              <div className="max-w-3xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="text-center md:text-left">
-                  <h2 className="text-2xl font-bold text-slate-900 font-serif-display">
-                    Family Trip & Darshan Quota Alerts
+              {/* LOCAL TOUR GUIDES SECTION (REPLACES TIRUPATI & KAKINADA CORRIDOR GUIDES) */}
+              <LocalGuidesSection
+                guides={guides}
+                onSelectGuide={(g) => setActiveGuideProfileModal(g)}
+                onContactGuide={(g) => setActiveGuideContactModal(g)}
+                onRegisterAsGuide={() => setGuideRegisterModalOpen(true)}
+              />
+
+              {/* HOW TRIP TOGETHER WORKS */}
+              <section className="bg-white rounded-3xl border border-stone-200/90 p-8 sm:p-12 shadow-xs space-y-8">
+                <div className="text-center max-w-xl mx-auto space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0D9488] text-xs font-semibold">
+                    <Compass className="w-3.5 h-3.5" />
+                    <span>Seamless Journey Flow</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif-display">
+                    How Trip Together Works
                   </h2>
-                  <p className="text-xs sm:text-sm text-stone-600 mt-1">
-                    Save your family email for TTD 90-day quota release reminders & IRCTC Tatkal alerts
+                  <p className="text-xs sm:text-sm text-stone-600">
+                    A thoughtfully engineered 4-step workflow for modern family and group travel
                   </p>
                 </div>
 
-                {newsletterSubscribed ? (
-                  <div className="px-5 py-3 bg-emerald-900 text-white text-xs font-semibold rounded-full">
-                    Subscribed! Alerts enabled for {newsletterEmail}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative">
+                  <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#0F1E36] text-teal-300 font-mono-num font-bold flex items-center justify-center text-sm">
+                      01
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Discover</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      Search curated destinations, compare authentic train, bus, and flight connections, and explore verified tour packages.
+                    </p>
                   </div>
-                ) : (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (newsletterEmail.trim() && newsletterEmail.includes('@')) {
-                        setNewsletterSubscribed(true);
-                      }
-                    }}
-                    className="flex w-full md:w-auto items-center gap-2"
+
+                  <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#0F1E36] text-teal-300 font-mono-num font-bold flex items-center justify-center text-sm">
+                      02
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Plan</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      Build and reorder custom day-by-day itineraries, generate AI recommendations, and calculate transparent budget breakdowns.
+                    </p>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#0F1E36] text-teal-300 font-mono-num font-bold flex items-center justify-center text-sm">
+                      03
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Connect</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      Message certified local tour guides, coordinate with private family group chat, and assign items on shared packing checklists.
+                    </p>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#0F1E36] text-teal-300 font-mono-num font-bold flex items-center justify-center text-sm">
+                      04
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Travel</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      Submit genuine booking inquiries, track consent-based route GPS, export offline PDF schedules, and travel with total peace of mind.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* WHY CHOOSE TRIP TOGETHER */}
+              <section className="space-y-8">
+                <div className="text-center max-w-xl mx-auto space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Platform Advantages</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif-display">
+                    Why Choose Trip Together?
+                  </h2>
+                  <p className="text-xs sm:text-sm text-stone-600">
+                    Grounded in transparency, verified tariffs, and family-first accommodations
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="bg-white rounded-2xl border border-stone-200/90 p-6 space-y-2.5 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0D9488] flex items-center justify-center">
+                      <Compass className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Flexible Destination Discovery</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      Search and explore any city or regional circuit beyond fixed lists, with verified transit modes and live distance calculations.
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-stone-200/90 p-6 space-y-2.5 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0D9488] flex items-center justify-center">
+                      <Wallet className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Transparent Package Pricing</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      No hidden markups or fabricated seat availability. We distinguish between per-night hotel budgets and total-stay calculations.
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-stone-200/90 p-6 space-y-2.5 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0D9488] flex items-center justify-center">
+                      <Calendar className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Personalised Itinerary Planning</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      Adaptive day-by-day scheduling with senior citizen rest windows, customized food stops, and instant PDF exports.
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-stone-200/90 p-6 space-y-2.5 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0D9488] flex items-center justify-center">
+                      <Award className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Access to Verified Local Guides</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      Connect with licensed regional experts who provide authentic cultural narration, queue facilitation, and senior citizen care.
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-stone-200/90 p-6 space-y-2.5 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0D9488] flex items-center justify-center">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Convenient Trip Organisation</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      Private group messaging, collaborative packing checklists, and opt-in location sharing keeping everyone synchronized.
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-stone-200/90 p-6 space-y-2.5 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0D9488] flex items-center justify-center">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Verified Providers</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      Cross-referenced against official state tourism guidelines and direct official portals without inventing false claims.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* REVIEWS AND TESTIMONIALS */}
+              <section className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold mb-2">
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                      <span>Genuine Community Voices</span>
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif-display">
+                      Verified Traveller Feedback
+                    </h2>
+                    <p className="text-xs sm:text-sm text-stone-600 mt-1">
+                      Real reviews from families and groups who traveled using Trip Together
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setWriteReviewModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-slate-800 text-xs font-bold transition-colors cursor-pointer shadow-xs shrink-0"
                   >
-                    <input
-                      type="email"
-                      required
-                      value={newsletterEmail}
-                      onChange={(e) => setNewsletterEmail(e.target.value)}
-                      placeholder="Enter your family email..."
-                      className="flex-1 md:w-64 px-4 py-2.5 text-xs bg-white border border-stone-300 rounded-full focus:outline-none"
-                    />
-                    <button
-                      type="submit"
-                      className="px-6 py-2.5 text-xs font-semibold text-white bg-[#1E332A] hover:bg-[#14241D] rounded-full transition-colors whitespace-nowrap shrink-0"
+                    <MessageSquare className="w-3.5 h-3.5 text-[#0D9488]" />
+                    <span>Write a Review</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {reviews.slice(0, 4).map((rev) => (
+                    <div
+                      key={rev.id}
+                      className="bg-white rounded-2xl border border-stone-200/90 p-6 space-y-3 shadow-xs"
                     >
-                      Get Alerts
-                    </button>
-                  </form>
-                )}
-              </div>
-            </section>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          {[...Array(rev.rating)].map((_, i) => (
+                            <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                          ))}
+                        </div>
+                        <span className="text-[11px] text-stone-400">{rev.date}</span>
+                      </div>
+
+                      <p className="text-xs sm:text-sm text-slate-700 leading-relaxed italic">
+                        "{rev.comment}"
+                      </p>
+
+                      <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-900">{rev.authorName}</span>
+                        <span className="text-stone-400">{rev.location}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* NEWSLETTER ALERT SUBSCRIPTION */}
+              <section className="bg-gradient-to-r from-[#0F1E36] to-[#1E3A8A] rounded-3xl p-8 sm:p-10 text-white shadow-xl">
+                <div className="max-w-3xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="text-center md:text-left space-y-1">
+                    <h2 className="text-xl sm:text-2xl font-bold font-serif-display">
+                      Stay Informed on Travel Alerts
+                    </h2>
+                    <p className="text-xs sm:text-sm text-stone-200">
+                      Receive notifications for season quota releases, Tatkal reminders, and local festivals.
+                    </p>
+                  </div>
+
+                  {newsletterSubscribed ? (
+                    <div className="px-5 py-3 bg-teal-500/20 border border-teal-400/30 text-teal-200 text-xs font-semibold rounded-xl">
+                      ✓ Subscribed! Alerts enabled for {newsletterEmail}
+                    </div>
+                  ) : (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (newsletterEmail.trim() && newsletterEmail.includes('@')) {
+                          setNewsletterSubscribed(true);
+                        }
+                      }}
+                      className="flex w-full md:w-auto items-center gap-2"
+                    >
+                      <input
+                        type="email"
+                        required
+                        value={newsletterEmail}
+                        onChange={(e) => setNewsletterEmail(e.target.value)}
+                        placeholder="Enter your family email..."
+                        className="flex-1 md:w-64 px-4 py-2.5 text-xs bg-white text-slate-900 rounded-xl focus:outline-none"
+                      />
+                      <button
+                        type="submit"
+                        className="px-6 py-2.5 text-xs font-bold text-white bg-[#0D9488] hover:bg-[#0f766e] rounded-xl transition-colors whitespace-nowrap cursor-pointer shadow-md"
+                      >
+                        Subscribe
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </section>
+            </div>
           </div>
-        ) : (
-          /* Inner Functional Modules Container with Single Clean Top Search Bar */
-          <div>
-            <section className="bg-[#182921] py-5 px-4 sm:px-6 border-b border-stone-200">
-              <div className="max-w-[1280px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+        )}
+
+        {/* EXPLORE DESTINATIONS PAGE */}
+        {activeSection === 'destinations' && (
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
                 <button
                   type="button"
                   onClick={() => navigateAndScroll('dashboard')}
-                  className="text-xs font-semibold text-amber-200 hover:underline whitespace-nowrap shrink-0"
+                  className="text-xs font-semibold text-[#0D9488] hover:underline mb-1 block cursor-pointer"
                 >
-                  ← Back to Home Overview
+                  ← Back to Home
                 </button>
-
-                <div className="w-full max-w-xl">
-                  <DestinationSearchBar
-                    value={searchQuery}
-                    onChange={handleSearchQueryChange}
-                    onSubmit={handleTopSearchSubmit}
-                    onSelectDestination={handleSelectDestination}
-                    onClearDestination={handleClearDestination}
-                    selectedDestination={selectedDestination}
-                    placeholder="Where do you want to go?"
-                    variant="compact"
-                  />
-                </div>
-
-                <span className="text-xs font-mono-num text-stone-300 whitespace-nowrap shrink-0">
-                  Planned: ₹{totalPlannedCost.toLocaleString('en-IN')} / ₹{tripParams.totalBudget.toLocaleString('en-IN')}
-                </span>
+                <h1 className="text-3xl font-bold text-slate-900 font-serif-display">
+                  Explore Destinations
+                </h1>
+                <p className="text-xs sm:text-sm text-stone-600 mt-1">
+                  Discover verified pilgrimage circuits, hill retreats, coastal getaways, and heritage fortresses.
+                </p>
               </div>
-            </section>
 
-            <div className="max-w-[1280px] mx-auto px-6 lg:px-10 py-8 space-y-8">
-
-            {/* SECTION 2: FIND TRANSPORT */}
-            {activeSection === 'transport' && (
-              <TransportSection
-                tripParams={tripParams}
-                setTripParams={setTripParams}
-                trains={KAKINADA_TO_TIRUPATI_TRAINS}
-                buses={KAKINADA_TO_TIRUPATI_BUSES}
-                flights={KAKINADA_TO_TIRUPATI_FLIGHTS}
-                onShortlistBooking={handleShortlistBooking}
-              />
-            )}
-
-            {/* SECTION 3: HOTELS AND ROOMS */}
-            {activeSection === 'hotels' && (
-              <HotelsSection
-                tripParams={tripParams}
-                setTripParams={setTripParams}
-                hotels={TIRUPATI_HOTELS}
-                hotelImageUrl={tirupatiHotelImg}
-                onShortlistBooking={handleShortlistBooking}
-              />
-            )}
-
-            {/* SECTION 4: TOUR PACKAGES */}
-            {activeSection === 'packages' && (
-              <PackagesSection
-                tripParams={tripParams}
-                packages={TIRUPATI_PACKAGES}
-                providerAdapters={providerAdapters}
-                tourImageUrl={chandragiriTourImg}
-                onShortlistBooking={handleShortlistBooking}
-              />
-            )}
-
-            {/* SECTION 5: CUSTOM TRIP BUILDER & AI RECOMMENDATIONS */}
-            {activeSection === 'builder' && (
-              <TripBuilderSection
-                tripParams={tripParams}
-                setTripParams={setTripParams}
-                itineraryDays={itineraryDays}
-                setItineraryDays={setItineraryDays}
-                onShortlistBooking={handleShortlistBooking}
-              />
-            )}
-
-            {/* SECTION 6: FAMILY LIVE TRACKING */}
-            {activeSection === 'tracking' && (
-              <FamilyTrackingSection
-                tripParams={tripParams}
-                members={familyMembers}
-                setMembers={setFamilyMembers}
-                activeMemberId={activeMemberId}
-              />
-            )}
-
-            {/* SECTION 7: FAMILY CHAT */}
-            {activeSection === 'chat' && (
-              <FamilyChatSection
-                messages={chatMessages}
-                setMessages={setChatMessages}
-                members={familyMembers}
-                activeMemberId={activeMemberId}
-                setActiveMemberId={setActiveMemberId}
-                checklistItems={checklistItems}
-                savedBookings={savedBookings}
-              />
-            )}
-
-            {/* SECTION 8: PACKING CHECKLIST */}
-            {activeSection === 'checklist' && (
-              <PackingChecklistSection
-                items={checklistItems}
-                setItems={setChecklistItems}
-                members={familyMembers}
-                activeMemberId={activeMemberId}
-              />
-            )}
-
-            {/* SECTION 9: MY BOOKINGS AND TRIP BUDGET */}
-            {activeSection === 'budget' && (
-              <BudgetSection
-                tripParams={tripParams}
-                setTripParams={setTripParams}
-                savedBookings={savedBookings}
-                setSavedBookings={setSavedBookings}
-              />
-            )}
+              <div className="flex items-center gap-2">
+                {['All', 'Pilgrimage', 'Hill Station', 'Coastal & Beach', 'Heritage & Culture', 'Adventure'].map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setDestinationCategoryFilter(cat)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer ${
+                      destinationCategoryFilter === cat
+                        ? 'bg-[#0F1E36] text-white'
+                        : 'bg-white border border-stone-200 text-slate-600 hover:bg-stone-50'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {filteredDestinations.map((dest) => (
+                <div
+                  key={dest.id}
+                  className="group bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+                >
+                  <div className="relative h-56 overflow-hidden">
+                    <img
+                      src={dest.image}
+                      alt={dest.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
+                    <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-slate-900/70 text-white text-[11px] font-semibold">
+                      {dest.category}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleWishlistDest(dest.name)}
+                      className="absolute top-3 right-3 p-1.5 rounded-full bg-white/80 text-rose-500 shadow-xs cursor-pointer"
+                    >
+                      <Heart
+                        className={`w-4 h-4 ${
+                          wishlistDestinations.includes(dest.name)
+                            ? 'fill-rose-500 text-rose-500'
+                            : 'text-slate-400'
+                        }`}
+                      />
+                    </button>
+                    <div className="absolute bottom-3 left-3.5 right-3.5 text-white">
+                      <h3 className="text-lg font-bold font-serif-display">{dest.name}</h3>
+                      <p className="text-xs text-stone-200 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-teal-300" />
+                        <span>{dest.state}, {dest.country}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                    <p className="text-xs text-stone-600 line-clamp-2">{dest.description}</p>
+                    <div className="space-y-1 text-xs text-stone-500 pt-2 border-t border-stone-100">
+                      <div className="flex justify-between">
+                        <span>Best Season:</span>
+                        <span className="font-semibold text-slate-800">{dest.bestSeason}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Night Budget:</span>
+                        <span className="font-semibold text-[#0D9488] font-mono-num">{dest.approxNightBudget}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveDestinationModal(dest)}
+                      className="w-full py-2 rounded-xl bg-stone-100 hover:bg-[#0F1E36] text-slate-800 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Explore Destination Details →
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* LOCAL GUIDES PAGE */}
+        {activeSection === 'guides' && (
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('dashboard')}
+              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
+            >
+              ← Back to Home
+            </button>
+            <LocalGuidesSection
+              guides={guides}
+              onSelectGuide={(g) => setActiveGuideProfileModal(g)}
+              onContactGuide={(g) => setActiveGuideContactModal(g)}
+              onRegisterAsGuide={() => setGuideRegisterModalOpen(true)}
+            />
+          </div>
+        )}
+
+        {/* TOUR PACKAGES SECTION */}
+        {activeSection === 'packages' && (
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('dashboard')}
+              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
+            >
+              ← Back to Home
+            </button>
+            <PackagesSection
+              tripParams={tripParams}
+              packages={TIRUPATI_PACKAGES}
+              providerAdapters={providerAdapters}
+              tourImageUrl={chandragiriTourImg}
+              onShortlistBooking={handleShortlistBooking}
+              onSelectPackage={(pkg) => setActivePackageModal(pkg)}
+              onBookPackage={(pkg) => setActiveBookingModal(pkg)}
+              onToggleWishlist={handleToggleWishlistPkg}
+              wishlist={wishlistPackages}
+            />
+          </div>
+        )}
+
+        {/* TRIP PLANNER & ITINERARY BUILDER */}
+        {activeSection === 'builder' && (
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('dashboard')}
+              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
+            >
+              ← Back to Home
+            </button>
+            <TripBuilderSection
+              tripParams={tripParams}
+              setTripParams={setTripParams}
+              itineraryDays={itineraryDays}
+              setItineraryDays={setItineraryDays}
+              onShortlistBooking={handleShortlistBooking}
+              userId={authUser?.id}
+            />
+          </div>
+        )}
+
+        {/* TRANSPORT SECTION */}
+        {activeSection === 'transport' && (
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('dashboard')}
+              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
+            >
+              ← Back to Home
+            </button>
+            <TransportSection
+              tripParams={tripParams}
+              setTripParams={setTripParams}
+              trains={KAKINADA_TO_TIRUPATI_TRAINS}
+              buses={KAKINADA_TO_TIRUPATI_BUSES}
+              flights={KAKINADA_TO_TIRUPATI_FLIGHTS}
+              onShortlistBooking={handleShortlistBooking}
+            />
+          </div>
+        )}
+
+        {/* HOTELS SECTION */}
+        {activeSection === 'hotels' && (
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('dashboard')}
+              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
+            >
+              ← Back to Home
+            </button>
+            <HotelsSection
+              tripParams={tripParams}
+              setTripParams={setTripParams}
+              hotels={TIRUPATI_HOTELS}
+              hotelImageUrl={tirupatiHotelImg}
+              onShortlistBooking={handleShortlistBooking}
+            />
+          </div>
+        )}
+
+        {/* FAMILY LIVE TRACKING */}
+        {activeSection === 'tracking' && (
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('dashboard')}
+              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
+            >
+              ← Back to Home
+            </button>
+            <FamilyTrackingSection
+              tripParams={tripParams}
+              members={familyMembers}
+              setMembers={setFamilyMembers}
+              activeMemberId={activeMemberId}
+            />
+          </div>
+        )}
+
+        {/* FAMILY GROUP CHAT */}
+        {activeSection === 'chat' && (
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('dashboard')}
+              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
+            >
+              ← Back to Home
+            </button>
+            <FamilyChatSection
+              messages={chatMessages}
+              setMessages={setChatMessages}
+              members={familyMembers}
+              activeMemberId={activeMemberId}
+              setActiveMemberId={setActiveMemberId}
+              checklistItems={checklistItems}
+              savedBookings={savedBookings}
+            />
+          </div>
+        )}
+
+        {/* PACKING CHECKLIST */}
+        {activeSection === 'checklist' && (
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('dashboard')}
+              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
+            >
+              ← Back to Home
+            </button>
+            <PackingChecklistSection
+              items={checklistItems}
+              setItems={setChecklistItems}
+              members={familyMembers}
+              activeMemberId={activeMemberId}
+            />
+          </div>
+        )}
+
+        {/* MY BOOKINGS AND BUDGET */}
+        {activeSection === 'budget' && (
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('dashboard')}
+              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
+            >
+              ← Back to Home
+            </button>
+            <BudgetSection
+              tripParams={tripParams}
+              setTripParams={setTripParams}
+              savedBookings={savedBookings}
+              setSavedBookings={setSavedBookings}
+            />
+          </div>
+        )}
+
+        {/* TRAVELLER DASHBOARD VIEW */}
+        {activeSection === 'traveller-dashboard' && (
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('dashboard')}
+              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
+            >
+              ← Back to Home
+            </button>
+            <TravellerDashboardSection
+              user={authUser || { id: 'usr-guest', name: 'Guest Traveler', email: 'guest@example.com' }}
+              onOpenTrip={handleOpenSavedTrip}
+              onExploreDestination={(destName) => {
+                const found = destinations.find((d) => d.name.toLowerCase() === destName.toLowerCase());
+                if (found) setActiveDestinationModal(found);
+                else {
+                  setTripParams((p) => ({ ...p, destination: destName }));
+                  navigateAndScroll('transport');
+                }
+              }}
+              onBookPackage={(pkgTitle) => {
+                const found = packages.find((p) => p.title.toLowerCase().includes(pkgTitle.toLowerCase()));
+                if (found) setActiveBookingModal(found);
+                else navigateAndScroll('packages');
+              }}
+              onNavigate={navigateAndScroll}
+              wishlistDestinations={wishlistDestinations}
+              wishlistPackages={wishlistPackages}
+              onToggleWishlistDest={handleToggleWishlistDest}
+              onToggleWishlistPkg={handleToggleWishlistPkg}
+            />
+          </div>
+        )}
+
+        {/* ADMIN CONTROL PANEL VIEW */}
+        {activeSection === 'admin' && (
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
+            <button
+              type="button"
+              onClick={() => navigateAndScroll('dashboard')}
+              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
+            >
+              ← Back to Website
+            </button>
+            <AdminDashboardSection
+              onBackToPlatform={() => navigateAndScroll('dashboard')}
+            />
           </div>
         )}
       </main>
 
-      {/* Deep Forest Green Footer with Photo Gallery Grid (Matching Reference Image Footer) */}
-      <footer
-        onClickCapture={handleUnauthenticatedClickCapture}
-        className="bg-[#182921] text-stone-300 pt-12 pb-8 px-6 lg:px-10"
-      >
-        <div className="max-w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 pb-10 border-b border-white/10">
-          {/* Navigation Column */}
-          <div className="lg:col-span-3 space-y-2.5">
-            <h4 className="text-sm font-bold text-white font-serif-display">Navigation</h4>
-            <ul className="space-y-1.5 text-xs">
-              <li>
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('dashboard')}
-                  className="hover:text-white transition-colors"
-                >
-                  Home & Overview
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('transport')}
-                  className="hover:text-white transition-colors"
-                >
-                  Find Transport (Rail, Bus, Air)
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('hotels')}
-                  className="hover:text-white transition-colors"
-                >
-                  Hotels & TTD Rooms
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('packages')}
-                  className="hover:text-white transition-colors"
-                >
-                  Ready-Made Tour Packages
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('builder')}
-                  className="hover:text-white transition-colors"
-                >
-                  Custom Trip Builder & AI
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* Family Collaboration Column */}
-          <div className="lg:col-span-3 space-y-2.5">
-            <h4 className="text-sm font-bold text-white font-serif-display">
-              Family Collaboration
-            </h4>
-            <ul className="space-y-1.5 text-xs">
-              <li>
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('tracking')}
-                  className="hover:text-white transition-colors"
-                >
-                  Consent-Based Live Location Map
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('chat')}
-                  className="hover:text-white transition-colors"
-                >
-                  Private Family Group Chat
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('checklist')}
-                  className="hover:text-white transition-colors"
-                >
-                  Shared Packing Checklist ({packingProgressPct}%)
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('budget')}
-                  className="hover:text-white transition-colors"
-                >
-                  My Bookings & Trip Budget
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* Official Booking Portals & Transparency Info */}
-          <div className="lg:col-span-3 space-y-2.5">
-            <h4 className="text-sm font-bold text-white font-serif-display">
-              Official Booking Portals
-            </h4>
-            <p className="text-xs text-stone-400 leading-relaxed">
-              TripTogether never fabricates live seat counts or guaranteed darshan tokens. Verify real-time availability on official portals:
+      {/* FOOTER */}
+      <footer className="bg-[#0F1E36] text-stone-300 pt-16 pb-10 px-6 lg:px-10 border-t border-stone-800">
+        <div className="max-w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 pb-12 border-b border-white/10">
+          {/* Brand & Mission Column */}
+          <div className="lg:col-span-4 space-y-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-400 to-[#0D9488] flex items-center justify-center text-[#0F1E36] font-bold shadow-md">
+                <Compass className="w-5 h-5" />
+              </div>
+              <span className="text-xl font-bold font-serif-display text-white">TripTogether</span>
+            </div>
+            <p className="text-xs text-stone-300 max-w-sm leading-relaxed">
+              India's transparent collaborative travel platform. Discover verified destinations, compare live rail & road tariffs, book certified local guides, and travel together with total trust.
             </p>
-            <div className="flex flex-wrap gap-3 pt-1 text-xs">
-              <a
-                href="https://ttdevasthanams.ap.gov.in/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-amber-200 hover:underline"
-              >
-                TTD Portal
-              </a>
-              <a
-                href="https://www.irctc.co.in/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-amber-200 hover:underline"
-              >
-                IRCTC Rail
-              </a>
-              <a
-                href="https://www.apsrtconline.in/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-amber-200 hover:underline"
-              >
-                APSRTC Bus
-              </a>
-              <a
-                href="https://tourism.ap.gov.in/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-amber-200 hover:underline"
-              >
-                APTDC Tourism
-              </a>
+            <div className="text-xs text-stone-400 space-y-1 pt-1 font-mono-num">
+              <div>Email: <a href="mailto:support@triptogether.com" className="text-teal-300 hover:underline">support@triptogether.com</a></div>
+              <div>Helpline: <span className="text-white">+91 1800-425-TRIP</span> (9AM–8PM IST)</div>
             </div>
           </div>
 
-          {/* Right Column: 6-Photo Thumbnail Grid (Matching Reference Image Footer) */}
-          <div className="lg:col-span-3">
-            <div className="grid grid-cols-3 gap-2">
-              <img
-                src={heroTirupatiImg}
-                alt="Tirumala Hills"
-                referrerPolicy="no-referrer"
-                className="w-full h-14 object-cover rounded-lg border border-white/15"
-              />
-              <img
-                src={kakinadaGatewayImg}
-                alt="Kakinada Harbor"
-                referrerPolicy="no-referrer"
-                className="w-full h-14 object-cover rounded-lg border border-white/15"
-              />
-              <img
-                src={tirupatiHotelImg}
-                alt="Tirupati Family Suite"
-                referrerPolicy="no-referrer"
-                className="w-full h-14 object-cover rounded-lg border border-white/15"
-              />
-              <img
-                src={chandragiriTourImg}
-                alt="Chandragiri Fort"
-                referrerPolicy="no-referrer"
-                className="w-full h-14 object-cover rounded-lg border border-white/15"
-              />
-              <img
-                src={heroTirupatiImg}
-                alt="Seshachalam Sunrise"
-                referrerPolicy="no-referrer"
-                className="w-full h-14 object-cover rounded-lg border border-white/15"
-              />
-              <img
-                src={tirupatiHotelImg}
-                alt="Alipiri Stay"
-                referrerPolicy="no-referrer"
-                className="w-full h-14 object-cover rounded-lg border border-white/15"
-              />
-            </div>
+          {/* Quick Navigation Links */}
+          <div className="lg:col-span-2 space-y-2.5">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Explore</h4>
+            <ul className="space-y-2 text-xs">
+              <li>
+                <button type="button" onClick={() => navigateAndScroll('dashboard')} className="hover:text-white transition-colors cursor-pointer">
+                  Home
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => navigateAndScroll('destinations')} className="hover:text-white transition-colors cursor-pointer">
+                  Destinations
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => navigateAndScroll('packages')} className="hover:text-white transition-colors cursor-pointer">
+                  Tour Packages
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => navigateAndScroll('guides')} className="hover:text-white transition-colors cursor-pointer">
+                  Local Guides
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => navigateAndScroll('builder')} className="hover:text-white transition-colors cursor-pointer">
+                  Trip Planner
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Family & Services */}
+          <div className="lg:col-span-3 space-y-2.5">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Family Collaboration</h4>
+            <ul className="space-y-2 text-xs">
+              <li>
+                <button type="button" onClick={() => navigateAndScroll('tracking')} className="hover:text-white transition-colors cursor-pointer">
+                  Live Route GPS
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => navigateAndScroll('chat')} className="hover:text-white transition-colors cursor-pointer">
+                  Private Family Chat
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => navigateAndScroll('checklist')} className="hover:text-white transition-colors cursor-pointer">
+                  Packing Checklist ({packingProgressPct}%)
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => navigateAndScroll('budget')} className="hover:text-white transition-colors cursor-pointer">
+                  My Bookings & Ledger
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => setGuideRegisterModalOpen(true)} className="hover:text-white transition-colors cursor-pointer text-teal-300 font-semibold">
+                  Become a Local Guide →
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Legal & Portals */}
+          <div className="lg:col-span-3 space-y-2.5">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Policies & Portals</h4>
+            <ul className="space-y-2 text-xs">
+              <li>
+                <button type="button" onClick={() => setPolicyModal('privacy')} className="hover:text-white transition-colors cursor-pointer">
+                  Privacy Policy
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => setPolicyModal('terms')} className="hover:text-white transition-colors cursor-pointer">
+                  Terms & Conditions
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => setPolicyModal('cancellation')} className="hover:text-white transition-colors cursor-pointer">
+                  Booking & Refund Policy
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => setContactModalOpen(true)} className="hover:text-white transition-colors cursor-pointer">
+                  24/7 Help & Support
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => setAboutUsModalOpen(true)} className="hover:text-white transition-colors cursor-pointer">
+                  About Trip Together
+                </button>
+              </li>
+            </ul>
           </div>
         </div>
 
         <div className="max-w-[1280px] mx-auto pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-400">
           <div>
-            © 2026 TripTogether — AI-Powered Family Trip Planner ({tripParams.origin.split(',')[0]} to {tripParams.destination.split(',')[0]}).
+            © 2026 TripTogether Travel Platform. All rights reserved.
           </div>
           <div className="flex items-center gap-6">
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('transport')}
-              className="hover:text-white"
-            >
-              Transport
-            </button>
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('hotels')}
-              className="hover:text-white"
-            >
-              Hotels
-            </button>
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('packages')}
-              className="hover:text-white"
-            >
-              Packages
-            </button>
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('budget')}
-              className="hover:text-white"
-            >
-              Budget Ledger
-            </button>
+            <a href="https://ttdevasthanams.ap.gov.in/" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+              TTD Portal
+            </a>
+            <a href="https://www.irctc.co.in/" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+              IRCTC Rail
+            </a>
+            <a href="https://www.apsrtconline.in/" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+              APSRTC Bus
+            </a>
           </div>
         </div>
       </footer>
+
+      {/* ALL INTERACTIVE MODALS */}
+
+      {/* 1. Destination Detail Modal */}
+      {activeDestinationModal && (
+        <DestinationDetailModal
+          destination={activeDestinationModal}
+          packages={packages}
+          guides={guides}
+          onClose={() => setActiveDestinationModal(null)}
+          onSelectPackage={(pkg) => {
+            setActiveDestinationModal(null);
+            setActivePackageModal(pkg);
+          }}
+          onSelectGuide={(g) => {
+            setActiveDestinationModal(null);
+            setActiveGuideProfileModal(g);
+          }}
+          onPlanTripToDestination={(destName) => {
+            setActiveDestinationModal(null);
+            setTripParams((p) => ({ ...p, destination: destName }));
+            navigateAndScroll('builder');
+          }}
+        />
+      )}
+
+      {/* 2. Package Detail Modal */}
+      {activePackageModal && (
+        <PackageDetailModal
+          packageItem={activePackageModal}
+          onClose={() => setActivePackageModal(null)}
+          onBookPackage={(pkg) => {
+            setActivePackageModal(null);
+            setActiveBookingModal(pkg);
+          }}
+        />
+      )}
+
+      {/* 3. Booking / Enquiry Modal */}
+      {activeBookingModal && (
+        <BookingEnquiryModal
+          packageItem={activeBookingModal}
+          defaultEmail={authUser?.email}
+          defaultName={authUser?.name}
+          onClose={() => setActiveBookingModal(null)}
+          onSuccess={(ref, title) => {
+            setToastMessage(`✓ Booking confirmed for ${title}! Ref: ${ref}`);
+            setTimeout(() => setToastMessage(null), 4500);
+            loadPlatformData();
+          }}
+        />
+      )}
+
+      {/* 4. Contact Guide Modal */}
+      {activeGuideContactModal && (
+        <ContactGuideModal
+          guide={activeGuideContactModal}
+          defaultEmail={authUser?.email}
+          defaultName={authUser?.name}
+          onClose={() => setActiveGuideContactModal(null)}
+          onSuccess={(ref, gName) => {
+            setToastMessage(`✓ Inquiry sent to ${gName}! Ref: ${ref}`);
+            setTimeout(() => setToastMessage(null), 4500);
+            loadPlatformData();
+          }}
+        />
+      )}
+
+      {/* 5. Guide Profile Modal */}
+      {activeGuideProfileModal && (
+        <GuideProfileModal
+          guide={activeGuideProfileModal}
+          onClose={() => setActiveGuideProfileModal(null)}
+          onContactGuide={(g) => {
+            setActiveGuideProfileModal(null);
+            setActiveGuideContactModal(g);
+          }}
+        />
+      )}
+
+      {/* 6. Guide Registration Modal */}
+      <GuideRegisterModal
+        isOpen={guideRegisterModalOpen}
+        onClose={() => setGuideRegisterModalOpen(false)}
+        defaultEmail={authUser?.email}
+        defaultName={authUser?.name}
+        onSuccess={(newGuide) => {
+          setGuides((prev) => [newGuide, ...prev]);
+          setToastMessage(`✓ Guide application submitted for ${newGuide.name}`);
+          setTimeout(() => setToastMessage(null), 4000);
+        }}
+      />
+
+      {/* 7. Guide Dashboard Modal */}
+      {guideDashboardModalOpen && (
+        <GuideDashboardModal
+          guide={guides[0] || null}
+          onClose={() => setGuideDashboardModalOpen(false)}
+          onUpdateGuide={(updated) => {
+            setGuides((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+          }}
+        />
+      )}
+
+      {/* 8. Contact Support Modal */}
+      <ContactSupportModal
+        isOpen={contactModalOpen}
+        onClose={() => setContactModalOpen(false)}
+        defaultEmail={authUser?.email}
+        defaultName={authUser?.name}
+      />
+
+      {/* 9. About Us Modal */}
+      <AboutUsModal
+        isOpen={aboutUsModalOpen}
+        onClose={() => setAboutUsModalOpen(false)}
+        onExploreDestinations={() => navigateAndScroll('destinations')}
+      />
+
+      {/* 10. Write Review Modal */}
+      <WriteReviewModal
+        isOpen={writeReviewModalOpen}
+        onClose={() => setWriteReviewModalOpen(false)}
+        defaultName={authUser?.name}
+        defaultEmail={authUser?.email}
+        onSuccess={(newRev) => {
+          setReviews((prev) => [newRev, ...prev]);
+          setToastMessage('✓ Thank you for posting a verified review!');
+          setTimeout(() => setToastMessage(null), 4000);
+        }}
+      />
+
+      {/* 11. Manage Family Travelers Modal */}
+      {manageMembersModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-lg shadow-2xl border border-stone-200 space-y-6">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <h3 className="text-lg font-bold text-slate-900 font-serif-display">
+                Manage Participating Travelers
+              </h3>
+              <button
+                type="button"
+                onClick={() => setManageMembersModalOpen(false)}
+                className="p-1 rounded-full hover:bg-stone-100 text-stone-500 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {familyMembers.map((m) => (
+                <div
+                  key={m.id}
+                  className="p-3 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-[#0F1E36] text-white flex items-center justify-center text-xs font-bold">
+                      {m.avatarInitials}
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={m.name}
+                        onChange={(e) => handleUpdateMemberName(m.id, e.target.value)}
+                        className="text-xs font-bold text-slate-900 bg-transparent border-b border-stone-300 focus:border-[#0D9488] focus:outline-none"
+                      />
+                      <span className="text-[10px] text-stone-400 block">{m.role}</span>
+                    </div>
+                  </div>
+
+                  {familyMembers.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCustomMember(m.id)}
+                      className="p-1.5 text-rose-500 hover:text-rose-700 cursor-pointer"
+                      title="Remove traveler"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-stone-100 space-y-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="New Traveler Name..."
+                  value={newMemberNameInput}
+                  onChange={(e) => setNewMemberNameInput(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newMemberNameInput.trim()) {
+                      handleAddCustomMember(newMemberNameInput, newMemberRoleInput);
+                      setNewMemberNameInput('');
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#0F1E36] hover:bg-[#1E3A8A] text-white text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Add Traveler
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 12. Authentication Modal */}
+      {authModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div data-auth-modal className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-stone-200/90 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#0F1E36] to-[#0D9488] text-white px-6 py-6 relative">
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(false)}
+                aria-label="Close Sign In Modal"
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-white/15 flex items-center justify-center text-teal-300 shrink-0">
+                  <UserCircle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold font-serif-display">
+                    {authMode === 'signin' && 'Sign In to TripTogether'}
+                    {authMode === 'signup' && 'Create Your Account'}
+                    {authMode === 'forgot' && 'Reset Your Password'}
+                  </h3>
+                  <p className="text-xs text-stone-200 mt-0.5">
+                    {authMode === 'signin' && 'Access saved trips, bookings, and private family chat.'}
+                    {authMode === 'signup' && 'Join thousands of families discovering authentic journeys.'}
+                    {authMode === 'forgot' && 'Enter your registered email to reset your credentials.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleAuthSubmit} className="p-6 space-y-4">
+              {authError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>{authError}</span>
+                </div>
+              )}
+
+              {authMode === 'signup' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Your Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    placeholder="e.g. Madhuri Rao"
+                    className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488]"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Email ID *</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    className="w-full pl-9 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {authMode === 'forgot' ? 'New Password *' : 'Password *'}
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={passwordVisible ? 'text' : 'password'}
+                    required
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="At least 4 characters"
+                    className="w-full pl-9 pr-10 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPasswordVisible(!passwordVisible)}
+                    aria-label={passwordVisible ? 'Hide password' : 'Show password'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    {passwordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={authSubmitting}
+                  className="w-full py-3 rounded-xl bg-[#0F1E36] hover:bg-[#1E3A8A] text-white text-xs sm:text-sm font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {authSubmitting
+                    ? 'Validating...'
+                    : authMode === 'signin'
+                    ? 'Sign In to Account'
+                    : authMode === 'signup'
+                    ? 'Create Free Account'
+                    : 'Reset Password'}
+                </button>
+              </div>
+
+              {/* Mode Switchers */}
+              <div className="pt-2 flex items-center justify-between text-xs text-stone-500 border-t border-stone-100">
+                {authMode === 'signin' ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode('signup')}
+                      className="text-[#0D9488] font-bold hover:underline cursor-pointer"
+                    >
+                      New user? Sign Up
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode('forgot')}
+                      className="text-stone-500 hover:underline cursor-pointer"
+                    >
+                      Forgot Password?
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('signin')}
+                    className="text-[#0D9488] font-bold hover:underline mx-auto cursor-pointer"
+                  >
+                    ← Back to Sign In
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 13. Policy Modals (Privacy / Terms / Cancellation) */}
+      {policyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex justify-between items-center pb-3 border-b border-stone-100">
+              <h3 className="text-xl font-bold text-slate-900 font-serif-display capitalize">
+                {policyModal === 'privacy' && 'Trip Together Privacy Policy'}
+                {policyModal === 'terms' && 'Platform Terms & Conditions'}
+                {policyModal === 'cancellation' && 'Booking & Cancellation Policy'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setPolicyModal(null)}
+                className="p-1 rounded-full hover:bg-stone-100 text-stone-500 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="text-xs text-stone-600 space-y-3 leading-relaxed">
+              {policyModal === 'privacy' && (
+                <>
+                  <p>
+                    Trip Together is committed to safeguarding your family's personal information. We do not sell your email, phone numbers, or travel plans to third-party telemarketers.
+                  </p>
+                  <p>
+                    <strong>Consent-Based Location Sharing:</strong> GPS coordinates are shared exclusively among family members who explicitly grant in-browser permission. No background location tracking takes place without your consent.
+                  </p>
+                  <p>
+                    <strong>Verification Documents:</strong> All guide verification licenses and government credentials submitted for review are stored securely and never published publicly.
+                  </p>
+                </>
+              )}
+
+              {policyModal === 'terms' && (
+                <>
+                  <p>
+                    By using Trip Together, you agree to discover, plan, and submit inquiries with genuine intent. Our platform provides verified travel schedules and public tariffs.
+                  </p>
+                  <p>
+                    <strong>Government Portal Authority:</strong> Railway bookings and temple darshan tokens are governed by IRCTC and official devasthanams. Trip Together never guarantees darshan quotas beyond verified terms.
+                  </p>
+                </>
+              )}
+
+              {policyModal === 'cancellation' && (
+                <>
+                  <p>
+                    <strong>Tour Packages:</strong> Most verified packages offer free cancellation up to 48 hours prior to journey date. Specific provider policies are displayed transparently on every package card.
+                  </p>
+                  <p>
+                    <strong>Local Guiding:</strong> Guide bookings can be rescheduled or cancelled with 24 hours notice with full refund.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-stone-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPolicyModal(null)}
+                className="px-5 py-2 rounded-xl bg-[#0F1E36] text-white text-xs font-bold cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

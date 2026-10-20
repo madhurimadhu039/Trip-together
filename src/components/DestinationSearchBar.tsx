@@ -9,6 +9,7 @@ import {
   Calendar,
   IndianRupee,
   Loader2,
+  TrendingUp,
 } from 'lucide-react';
 import {
   PopularDestination,
@@ -31,7 +32,7 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
   value,
   onChange,
   onSubmit,
-  placeholder = 'Where do you want to go?',
+  placeholder = 'Where do you want to go? (e.g. Bangalore, Goa, Jaipur, Paris...)',
   className = '',
   variant = 'hero',
   onSelectDestination,
@@ -59,20 +60,21 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
 
   const cleanQuery = value.trim();
 
-  // Handle debounced search when user types
+  // Update suggestions immediately as user types
   useEffect(() => {
+    // 1. When input is empty, load default popular destinations
     if (!cleanQuery) {
-      setRecommendations([]);
+      const defaultDestinations = getRecommendedDestinations('', 8);
+      setRecommendations(defaultDestinations);
       setIsLoading(false);
-      setIsOpen(false);
       return;
     }
 
-    // Immediately compute synchronous results from verified catalog
+    // 2. Compute synchronous prefix matches immediately (case-insensitive startsWith)
     const immediateMatches = getRecommendedDestinations(cleanQuery, 8);
     setRecommendations(immediateMatches);
 
-    // Asynchronously verify against API with debouncing to avoid excessive calls
+    // 3. Debounced verification against API endpoint
     setIsLoading(true);
     let isCancelled = false;
 
@@ -88,7 +90,6 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
           }
         }
       } catch {
-        // Fallback gracefully to local matches if server or network error occurs
         if (!isCancelled) {
           setRecommendations(immediateMatches);
         }
@@ -97,7 +98,7 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
           setIsLoading(false);
         }
       }
-    }, 150);
+    }, 120);
 
     return () => {
       isCancelled = true;
@@ -130,21 +131,13 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
     const newVal = e.target.value;
     onChange(newVal);
 
-    // If user modifies text, clear any previously selected destination
+    // If user modifies text, reset previously selected destination so custom text is preserved
     if (currentSelected && newVal.trim().toLowerCase() !== currentSelected.name.toLowerCase()) {
       setCurrentSelected(null);
       onClearDestination?.();
     }
 
-    // Suggestions should only open when user starts typing a non-empty query
-    if (newVal.trim().length > 0) {
-      setIsOpen(true);
-    } else {
-      setIsOpen(false);
-      setRecommendations([]);
-      setCurrentSelected(null);
-      onClearDestination?.();
-    }
+    setIsOpen(true);
   };
 
   const handleSelect = (dest: PopularDestination) => {
@@ -160,26 +153,37 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
     }
   };
 
+  const handleSubmitCustom = (customText: string) => {
+    const trimmed = customText.trim();
+    if (!trimmed) return;
+    setIsOpen(false);
+    setActiveIndex(-1);
+    setCurrentSelected(null);
+    onSubmit(trimmed, null);
+  };
+
   const handleClear = () => {
     onChange('');
     setCurrentSelected(null);
     onClearDestination?.();
-    setRecommendations([]);
-    setIsOpen(false);
+    const defaults = getRecommendedDestinations('', 8);
+    setRecommendations(defaults);
     setActiveIndex(-1);
     inputRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const totalSelectable = recommendations.length + (cleanQuery.length > 0 ? 1 : 0);
+
     // Arrow down
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (!isOpen) {
-        if (cleanQuery.length > 0) setIsOpen(true);
+        setIsOpen(true);
         return;
       }
-      if (recommendations.length > 0) {
-        setActiveIndex((prev) => (prev < recommendations.length - 1 ? prev + 1 : 0));
+      if (totalSelectable > 0) {
+        setActiveIndex((prev) => (prev < totalSelectable - 1 ? prev + 1 : 0));
       }
       return;
     }
@@ -188,29 +192,38 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (!isOpen) {
-        if (cleanQuery.length > 0) setIsOpen(true);
+        setIsOpen(true);
         return;
       }
-      if (recommendations.length > 0) {
-        setActiveIndex((prev) => (prev > 0 ? prev - 1 : recommendations.length - 1));
+      if (totalSelectable > 0) {
+        setActiveIndex((prev) => (prev > 0 ? prev - 1 : totalSelectable - 1));
       }
       return;
     }
 
     // Enter key
     if (e.key === 'Enter') {
-      if (isOpen && activeIndex >= 0 && recommendations[activeIndex]) {
-        e.preventDefault();
+      e.preventDefault();
+      // If user navigated to a specific recommendation
+      if (isOpen && activeIndex >= 0 && activeIndex < recommendations.length) {
         handleSelect(recommendations[activeIndex]);
-      } else {
-        setIsOpen(false);
-        const trimmed = value.trim();
-        const effectiveDest =
-          currentSelected && currentSelected.name.toLowerCase() === trimmed.toLowerCase()
-            ? currentSelected
-            : null;
-        onSubmit(trimmed, effectiveDest);
+        return;
       }
+
+      // If user navigated to the "Use custom destination" item
+      if (isOpen && activeIndex === recommendations.length && cleanQuery.length > 0) {
+        handleSubmitCustom(cleanQuery);
+        return;
+      }
+
+      // Otherwise submit current input value directly as custom or matched destination
+      setIsOpen(false);
+      const trimmed = value.trim();
+      const matched = recommendations.find(
+        (r) => r.name.toLowerCase() === trimmed.toLowerCase()
+      );
+      const effectiveDest = matched || (currentSelected?.name.toLowerCase() === trimmed.toLowerCase() ? currentSelected : null);
+      onSubmit(trimmed, effectiveDest);
       return;
     }
 
@@ -225,20 +238,20 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isOpen && activeIndex >= 0 && recommendations[activeIndex]) {
+    if (isOpen && activeIndex >= 0 && activeIndex < recommendations.length) {
       handleSelect(recommendations[activeIndex]);
     } else {
       setIsOpen(false);
       const trimmed = value.trim();
-      const effectiveDest =
-        currentSelected && currentSelected.name.toLowerCase() === trimmed.toLowerCase()
-          ? currentSelected
-          : null;
+      const matched = recommendations.find(
+        (r) => r.name.toLowerCase() === trimmed.toLowerCase()
+      );
+      const effectiveDest = matched || (currentSelected?.name.toLowerCase() === trimmed.toLowerCase() ? currentSelected : null);
       onSubmit(trimmed, effectiveDest);
     }
   };
 
-  // Helper to highlight matching text in suggestion name
+  // Helper to highlight matching prefix in suggestion name
   const highlightMatch = (text: string, query: string) => {
     if (!query) return text;
     const cleanQ = query.trim().toLowerCase();
@@ -250,7 +263,7 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
     return (
       <>
         {before}
-        <span className="bg-amber-200/90 text-emerald-950 font-bold px-0.5 rounded">
+        <span className="bg-teal-200/90 text-teal-950 font-bold px-0.5 rounded">
           {match}
         </span>
         {after}
@@ -264,13 +277,13 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
         onSubmit={handleFormSubmit}
         className={`w-full flex items-center transition-all ${
           variant === 'hero'
-            ? 'bg-white/95 backdrop-blur-md rounded-full shadow-2xl border border-white/40 p-1.5 pl-5 gap-3 ring-1 ring-black/5 focus-within:ring-2 focus-within:ring-[#1E332A] focus-within:bg-white'
-            : 'bg-white rounded-full shadow-md border border-stone-200 p-1 pl-4 gap-2 focus-within:ring-2 focus-within:ring-[#1E332A]'
+            ? 'bg-white/95 backdrop-blur-md rounded-full shadow-2xl border border-white/40 p-1.5 pl-5 gap-3 ring-1 ring-black/5 focus-within:ring-2 focus-within:ring-[#0D9488] focus-within:bg-white'
+            : 'bg-white rounded-full shadow-md border border-stone-200 p-1 pl-4 gap-2 focus-within:ring-2 focus-within:ring-[#0D9488]'
         }`}
       >
         <Search
           className={`shrink-0 text-stone-400 transition-colors ${
-            variant === 'hero' ? 'w-4 h-4 sm:w-5 sm:h-5' : 'w-4 h-4'
+            variant === 'hero' ? 'w-4 h-4 sm:w-5 sm:h-5 text-teal-600' : 'w-4 h-4'
           }`}
         />
 
@@ -279,17 +292,12 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
           type="text"
           value={value}
           onChange={handleInputChange}
-          onFocus={() => {
-            // Only show suggestions dropdown on focus if the user has already entered a query
-            if (value.trim().length > 0) {
-              setIsOpen(true);
-            }
-          }}
+          onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           autoComplete="off"
           role="combobox"
-          aria-expanded={isOpen && cleanQuery.length > 0}
+          aria-expanded={isOpen}
           aria-autocomplete="list"
           aria-controls={listboxId}
           aria-activedescendant={
@@ -297,7 +305,7 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
               ? `dest-option-${recommendations[activeIndex].id}`
               : undefined
           }
-          className="flex-1 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-stone-400 bg-transparent focus:outline-none min-w-0"
+          className="flex-1 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-stone-400 bg-transparent focus:outline-none min-w-0"
         />
 
         {value && (
@@ -313,7 +321,7 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
 
         <button
           type="submit"
-          className={`font-bold tracking-wider text-white bg-[#1E332A] hover:bg-[#14241D] rounded-full transition-all whitespace-nowrap shrink-0 cursor-pointer shadow-sm active:scale-95 ${
+          className={`font-bold tracking-wider text-white bg-[#0D9488] hover:bg-[#0f766e] rounded-full transition-all whitespace-nowrap shrink-0 cursor-pointer shadow-sm active:scale-95 ${
             variant === 'hero'
               ? 'px-6 sm:px-7 py-2.5 sm:py-3 text-xs sm:text-xs'
               : 'px-5 py-2 text-xs'
@@ -323,8 +331,8 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
         </button>
       </form>
 
-      {/* Autocomplete & Suggestions Popover Dropdown - ONLY appears when user has entered a valid search query */}
-      {isOpen && cleanQuery.length > 0 && (
+      {/* Autocomplete & Suggestions Popover Dropdown */}
+      {isOpen && (
         <div
           id={listboxId}
           role="listbox"
@@ -332,25 +340,36 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
           style={{ maxHeight: 'min(520px, 80vh)' }}
         >
           {/* Popover Header */}
-          <div className="bg-gradient-to-r from-stone-50 via-amber-50/40 to-stone-50 px-4 py-2.5 border-b border-stone-200/80 flex flex-wrap items-center justify-between gap-2">
+          <div className="bg-gradient-to-r from-stone-50 via-teal-50/40 to-stone-50 px-4 py-2.5 border-b border-stone-200/80 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-800">
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-              <span>
-                Matching Destinations for{' '}
-                <span className="text-[#1E332A] font-bold">"{cleanQuery}"</span>
-              </span>
+              {cleanQuery ? (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                  <span>
+                    Suggestions starting with{' '}
+                    <span className="text-teal-900 font-bold">"{cleanQuery}"</span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <TrendingUp className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Popular Trending Destinations</span>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
-              {isLoading && (
-                <div className="flex items-center gap-1 text-[11px] text-amber-800 font-medium">
+              {isLoading && cleanQuery && (
+                <div className="flex items-center gap-1 text-[11px] text-teal-800 font-medium">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   <span>Searching...</span>
                 </div>
               )}
-              <span className="text-[11px] text-stone-500 font-medium">
-                {recommendations.length} {recommendations.length === 1 ? 'destination' : 'destinations'} found
-              </span>
+              {cleanQuery && (
+                <span className="text-[11px] text-stone-500 font-medium">
+                  {recommendations.length} {recommendations.length === 1 ? 'result' : 'results'}
+                </span>
+              )}
             </div>
           </div>
 
@@ -367,7 +386,6 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
                     aria-selected={isSelected}
                     type="button"
                     onMouseDown={(e) => {
-                      // Prevent input blur before selection completes
                       e.preventDefault();
                       handleSelect(dest);
                     }}
@@ -375,7 +393,7 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
                     onMouseEnter={() => setActiveIndex(idx)}
                     className={`w-full text-left px-4 py-3 flex items-start gap-3.5 transition-all group cursor-pointer ${
                       isSelected
-                        ? 'bg-amber-50/80'
+                        ? 'bg-teal-50/80'
                         : 'hover:bg-stone-50/90 bg-white'
                     }`}
                   >
@@ -383,8 +401,8 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
                     <div
                       className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
                         isSelected
-                          ? 'bg-[#1E332A] text-white shadow-sm'
-                          : 'bg-stone-100 text-stone-600 group-hover:bg-[#1E332A] group-hover:text-white'
+                          ? 'bg-[#0D9488] text-white shadow-sm'
+                          : 'bg-stone-100 text-stone-600 group-hover:bg-[#0D9488] group-hover:text-white'
                       }`}
                     >
                       <MapPin className="w-4 h-4" />
@@ -393,7 +411,7 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
                     {/* Content Details */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                        <span className="text-sm font-bold text-slate-900 group-hover:text-[#1E332A] transition-colors">
+                        <span className="text-sm font-bold text-slate-900 group-hover:text-teal-900 transition-colors">
                           {highlightMatch(dest.name, cleanQuery)}
                         </span>
                         <span className="text-xs text-stone-500 font-medium">
@@ -401,7 +419,7 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
                         </span>
 
                         {dest.badge && (
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-100/90 text-amber-900 border border-amber-200/60 shrink-0">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-200/60 shrink-0">
                             {dest.badge}
                           </span>
                         )}
@@ -441,8 +459,8 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
                       <span
                         className={`text-xs font-semibold flex items-center gap-1 px-2.5 py-1 rounded-full transition-all ${
                           isSelected
-                            ? 'bg-[#1E332A] text-white'
-                            : 'text-stone-400 group-hover:text-[#1E332A] group-hover:bg-stone-100'
+                            ? 'bg-[#0D9488] text-white'
+                            : 'text-stone-400 group-hover:text-[#0D9488] group-hover:bg-teal-50'
                         }`}
                       >
                         Select
@@ -453,22 +471,67 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
                 );
               })
             ) : !isLoading ? (
-              <div className="px-6 py-8 text-center space-y-2">
-                <Compass className="w-8 h-8 mx-auto text-stone-300" />
-                <p className="text-sm font-semibold text-slate-800">
-                  No destinations found matching "{cleanQuery}"
-                </p>
-                <p className="text-xs text-stone-500 max-w-sm mx-auto">
-                  We couldn't find any destination matching your search. You can still press <kbd className="px-1.5 py-0.5 bg-stone-100 rounded text-stone-700 font-mono text-[11px]">Enter</kbd> to search trains, buses, and hotels for "{cleanQuery}".
-                </p>
+              <div className="p-6 text-center space-y-3">
+                <Compass className="w-8 h-8 mx-auto text-teal-600" />
+                <div>
+                  <p className="text-sm font-bold text-slate-800">
+                    No matching destinations. You can still use your custom destination.
+                  </p>
+                  <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+                    Type any city, town, state, or region worldwide to plan your trip.
+                  </p>
+                </div>
+                {cleanQuery && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleSubmitCustom(cleanQuery);
+                    }}
+                    onClick={() => handleSubmitCustom(cleanQuery)}
+                    className="w-full max-w-sm mx-auto px-4 py-2.5 rounded-xl bg-[#0F1E36] hover:bg-[#1E3A8A] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-teal-400" />
+                    <span>Use "{cleanQuery}" as your custom destination</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             ) : null}
+
+            {/* Custom Destination Fallback Option when user has typed something that isn't an exact match */}
+            {cleanQuery && recommendations.length > 0 && !recommendations.some(r => r.name.toLowerCase() === cleanQuery.toLowerCase()) && (
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleSubmitCustom(cleanQuery);
+                }}
+                onClick={() => handleSubmitCustom(cleanQuery)}
+                onMouseEnter={() => setActiveIndex(recommendations.length)}
+                className={`w-full text-left px-4 py-3 flex items-center justify-between gap-3 border-t border-stone-200/80 transition-all cursor-pointer ${
+                  activeIndex === recommendations.length
+                    ? 'bg-teal-100/70 text-teal-950 font-bold'
+                    : 'bg-stone-50 hover:bg-stone-100 text-stone-700'
+                }`}
+              >
+                <div className="flex items-center gap-2 text-xs">
+                  <MapPin className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                  <span>
+                    Can't find your place? Use <strong className="text-slate-900">"{cleanQuery}"</strong> as your custom destination
+                  </span>
+                </div>
+                <span className="text-xs text-teal-700 font-semibold flex items-center gap-1 shrink-0">
+                  Select <ArrowRight className="w-3 h-3" />
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Popover Footer Info */}
           <div className="px-4 py-2 bg-stone-50/90 border-t border-stone-200/80 flex items-center justify-between text-[11px] text-stone-500">
             <span>
-              💡 Select any destination to auto-plan trains, buses & budget stays
+              💡 Type any custom destination or select from suggestions
             </span>
             <span className="hidden sm:inline text-stone-400 font-mono">
               ↑↓ to navigate • ↵ to select • Esc to close
