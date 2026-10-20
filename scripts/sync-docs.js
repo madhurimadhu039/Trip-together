@@ -26,9 +26,7 @@ if (fs.existsSync(distDir)) {
     const distDest = path.join(distDir, file);
     if (fs.existsSync(src)) {
       fs.copyFileSync(src, rootDest);
-      if (!fs.existsSync(distDest)) {
-        fs.copyFileSync(src, distDest);
-      }
+      fs.copyFileSync(src, distDest);
     }
   });
 

@@ -1,4 +1,6 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import {
@@ -518,16 +520,106 @@ const FAVICON_SVG_CONTENT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 
   <circle cx="66" cy="74" r="3" fill="#FFFFFF" />
 </svg>`;
 
-const serveFavicon = (_req: express.Request, res: express.Response) => {
+const FAVICON_ICO_BASE64 =
+  'AAABAAIAICAAAAEAIACoEAAAJgAAABAQAAABACAAaAQAAM4QAAAoAAAAIAAAAEAAAAABACAAAAAAAAAQAAAAAAAAAAAAAAAA' +
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAHmGEQZ6iBFSfIoRen2LEYB/jRGAgY8RgIKQEYCEkhKAhZQSgIeWEoCIlxKAipkSgIub' +
+  'EoCNnRKAj54SgJCgEoCSohOAk6MTgJWlE4CWpxOAmKkTgJqqE3qbrBNSna4TBgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+  'AAB2gxF3d4QR8XmGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRL/j54S/5Cg' +
+  'Ev+SohP/k6MT/5WlE/+WpxP/mKkT/5qqE/+brBPxna4TdwAAAAAAAAAAAAAAAAAAAAAAAAAAcn8QnnSBEf92gxH/d4QR/3mG' +
+  'Ef96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MT/5Wl' +
+  'E/+WpxP/mKkT/5qqE/+brBP/na4TngAAAAAAAAAAAAAAAG98EHdxfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32L' +
+  'Ef9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MT/5WlE/+WpxP/mKkT/5qq' +
+  'E/+brBP/na4TdwAAAABseBAGbnoQ8W98EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQ' +
+  'Ef+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MT/5WlE/+WpxP/mKkT/5qqE/+brBPxna4TBmt3' +
+  'EFJseBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eW' +
+  'Ev+IlxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MT/5WlE/+WpxP/mKkT/5qqE/+brBNSaXUQemt3EP9seBD/bnoQ/298' +
+  'EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf//////fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL//////4ub' +
+  'Ev+NnRL/j54S/5CgEv+SohP/k6MT/5WlE/+WpxP/mKkT/5qqE3pocxCAaXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q////' +
+  '////////////////////////////////////////////////////////////////////////////////////////j54S/5Cg' +
+  'Ev+SohP/k6MT/5WlE/+WpxP/mKkTgGZyEIBocxD/aXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q/3SBEf////////////////96' +
+  'iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/////////////////ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MT/5WlE/+W' +
+  'pxOAZHAPgGZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/' +
+  'jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MT/5WlE4Bjbg+AZHAP/2ZyEP9o' +
+  'cxD/aXUQ/2t3EP9seBD/bnoQ/298EP8Gd9n/BnfZ/wZ32f8Gd9n/JL/7/yS/+/8kv/v/JL/7/yS/+/8kv/v/JL/7/wZ32f8G' +
+  'd9n/BnfZ/wZ32f+IlxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohP/k6MTgGFsD4Bjbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9s' +
+  'eBD/bnoQ/298EP8Gd9n/BnfZ/wZ32f8kv/v/JL/7/yS/+/8kv/v/JL/7/yS/+/8kv/v/BnfZ/wZ32f8Gd9n/hZQS/4eWEv+I' +
+  'lxL/ipkS/4ubEv+NnRL/j54S/5CgEv+SohOAYGsPgGFsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ/wZ32f8G' +
+  'd9n/BnfZ/wZ32f8kv/v/JL/7/yS/+/8kv/v/JL/7/wZ32f8Gd9n/BnfZ/wZ32f+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+N' +
+  'nRL/j54S/5CgEoBeaQ+AYGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ/wZ32f8Gd9n/BnfZ/yS/+/8k' +
+  'v/v/JL/7/yS/+/8kv/v/BnfZ/wZ32f8Gd9n/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRL/j54SgF1nD4Be' +
+  'aQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ/wZ32f8Gd9n/BnfZ/yS/+/8kv/v/JL/7/wZ32f8G' +
+  'd9n/BnfZ/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEv+NnRKAW2YPgF1nD/9eaQ//YGsP/2FsD/9j' +
+  'bg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/BnfZ/wZ32f8Gd9n/JL/7/yS/+/8kv/v/BnfZ/wZ32f8Gd9n/fIoR/32LEf9/' +
+  'jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+IlxL/ipkS/4ubEoBZZA+AW2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9o' +
+  'cxD/aXUQ/2t3EP9seBD/BnfZ/wZ32f8Gd9n/JL/7/wZ32f8Gd9n/BnfZ/3mGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+E' +
+  'khL/hZQS/4eWEv+IlxL/ipkSgFhiD4BZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP8G' +
+  'd9n/BnfZ/wZ32f8Gd9n/BnfZ/wZ32f8Gd9n/d4QR/3mGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEv+I' +
+  'lxKAVmAOgFhiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP8Gd9n/BnfZ/wZ32f8G' +
+  'd9n/BnfZ/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQS/4eWEoBVXw6AVmAO/1hiD/9Z' +
+  'ZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP8Gd9n/BnfZ/wZ32f9xfhD/cn8Q/3SBEf92' +
+  'gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhL/hZQSgFNdDoBVXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9e' +
+  'aQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/wZ32f8Gd9n/BnfZ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96' +
+  'iBH/fIoR/32LEf9/jRH/gY8R/4KQEf+EkhKAUlsOgFNdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9j' +
+  'bg//ZHAP/2ZyEP9ocxD/JL/7/wZ32f8kv/v/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/' +
+  'jRH/gY8R/4KQEYBQWQ6AUlsO/1NdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/yS/+/8k' +
+  'v/v/BnfZ/yS/+/8kv/v/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/jRH/gY8RgE9YDoBQ' +
+  'WQ7/UlsO/1NdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//JL/7/yS/+/8kv/v/JL/7/yS/+/9s' +
+  'eBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEf9/jRGATVYOgE9YDv9QWQ7/UlsO/1NdDv9V' +
+  'Xw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/8kv/v/JL/7/yS/+/8kv/v/JL/7/2t3EP9seBD/bnoQ/298EP9x' +
+  'fhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96iBH/fIoR/32LEYBLVA56TVYO/09YDv9QWQ7/UlsO/1NdDv9VXw7/VmAO/1hiD/9Z' +
+  'ZA//W2YP/11nD/9eaQ//YGsP/2FsD/8kv/v/JL/7/yS/+/9ocxD/aXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92' +
+  'gxH/d4QR/3mGEf96iBH/fIoRekpTDlJLVA7/TVYO/09YDv9QWQ7/UlsO/1NdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9e' +
+  'aQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR/3mGEf96' +
+  'iBFSSFENBkpTDvFLVA7/TVYO/09YDv9QWQ7/UlsO/1NdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9j' +
+  'bg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxH/d4QR8XmGEQYAAAAASFENd0pTDv9L' +
+  'VA7/TVYO/09YDv9QWQ7/UlsO/1NdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9o' +
+  'cxD/aXUQ/2t3EP9seBD/bnoQ/298EP9xfhD/cn8Q/3SBEf92gxF3AAAAAAAAAAAAAAAASFENnkpTDv9LVA7/TVYO/09YDv9Q' +
+  'WQ7/UlsO/1NdDv9VXw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9s' +
+  'eBD/bnoQ/298EP9xfhD/cn8QngAAAAAAAAAAAAAAAAAAAAAAAAAASFENd0pTDvFLVA7/TVYO/09YDv9QWQ7/UlsO/1NdDv9V' +
+  'Xw7/VmAO/1hiD/9ZZA//W2YP/11nD/9eaQ//YGsP/2FsD/9jbg//ZHAP/2ZyEP9ocxD/aXUQ/2t3EP9seBD/bnoQ8W98EHcA' +
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASFENBkpTDlJLVA56TVYOgE9YDoBQWQ6AUlsOgFNdDoBVXw6AVmAOgFhiD4BZ' +
+  'ZA+AW2YPgF1nD4BeaQ+AYGsPgGFsD4Bjbg+AZHAPgGZyEIBocxCAaXUQemt3EFJseBAGAAAAAAAAAAAAAAAAAAAAAPAAAA/g' +
+  'AAAHwAAAA4AAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAABwAAAA+AAAAfwAAAPKAAAABAAAAAgAAAAAQAgAAAAAAAABAAAAAAAAAAAAAAA' +
+  'AAAAAAAAAAAAAAAAAAAAd4QRVXqIEX99ixGAgY8RgISSEoCHlhKAipkSgI2dEoCQoBKAk6MTgJanE3+aqhNVAAAAAAAAAAAA' +
+  'AAAAcX4QqXSBEf93hBH/eogR/32LEf+BjxH/hJIS/4eWEv+KmRL/jZ0S/5CgEv+ToxP/lqcT/5qqE6kAAAAAa3cQVW56EP9x' +
+  'fhD/dIER/3eEEf96iBH/fYsR/4GPEf+EkhL/h5YS/4qZEv+NnRL/kKAS/5OjE/+WpxP/mqoTVWhzEH9rdxD/bnoQ/3F+EP//' +
+  '///////////////////////////////////////////////+QoBL/k6MT/5anE39kcA+AaHMQ/2t3EP9uehD/cX4Q/3SBEf93' +
+  'hBH/eogR/32LEf+BjxH/hJIS/4eWEv+KmRL/jZ0S/5CgEv+ToxOAYWwPgGRwD/9ocxD/a3cQ/256EP8Gd9n/BnfZ/yS/+/8k' +
+  'v/v/JL/7/wZ32f8Gd9n/h5YS/4qZEv+NnRL/kKASgF5pD4BhbA//ZHAP/2hzEP9rdxD/bnoQ/wZ32f8kv/v/JL/7/yS/+/8G' +
+  'd9n/gY8R/4SSEv+HlhL/ipkS/42dEoBbZg+AXmkP/2FsD/9kcA//aHMQ/2t3EP8Gd9n/BnfZ/yS/+/8Gd9n/BnfZ/32LEf+B' +
+  'jxH/hJIS/4eWEv+KmRKAWGIPgFtmD/9eaQ//YWwP/2RwD/9ocxD/a3cQ/wZ32f8Gd9n/BnfZ/3eEEf96iBH/fYsR/4GPEf+E' +
+  'khL/h5YSgFVfDoBYYg//W2YP/15pD/9hbA//ZHAP/2hzEP9rdxD/BnfZ/3F+EP90gRH/d4QR/3qIEf99ixH/gY8R/4SSEoBS' +
+  'Ww6AVV8O/1hiD/9bZg//XmkP/2FsD/9kcA//aHMQ/wZ32f9uehD/cX4Q/3SBEf93hBH/eogR/32LEf+BjxGAT1gOgFJbDv9V' +
+  'Xw7/WGIP/1tmD/9eaQ//YWwP/yS/+/8kv/v/JL/7/256EP9xfhD/dIER/3eEEf96iBH/fYsRgEtUDn9PWA7/UlsO/1VfDv9Y' +
+  'Yg//W2YP/15pD/9hbA//JL/7/2hzEP9rdxD/bnoQ/3F+EP90gRH/d4QR/3qIEX9IUQ1VS1QO/09YDv9SWw7/VV8O/1hiD/9b' +
+  'Zg//XmkP/2FsD/9kcA//aHMQ/2t3EP9uehD/cX4Q/3SBEf93hBFVAAAAAEhRDalLVA7/T1gO/1JbDv9VXw7/WGIP/1tmD/9e' +
+  'aQ//YWwP/2RwD/9ocxD/a3cQ/256EP9xfhCpAAAAAAAAAAAAAAAASFENVUtUDn9PWA6AUlsOgFVfDoBYYg+AW2YPgF5pD4Bh' +
+  'bA+AZHAPgGhzEH9rdxBVAAAAAAAAAADAAwAAgAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+  'AAAAAAAAAIABAADAAwAA';
+
+const serveFaviconIco = (_req: express.Request, res: express.Response) => {
+  res.setHeader('Content-Type', 'image/x-icon');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  try {
+    const icoPath = path.resolve(process.cwd(), 'public', 'favicon.ico');
+    if (fs.existsSync(icoPath)) {
+      return res.send(fs.readFileSync(icoPath));
+    }
+  } catch {}
+  res.send(Buffer.from(FAVICON_ICO_BASE64, 'base64'));
+};
+
+const serveFaviconSvg = (_req: express.Request, res: express.Response) => {
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'public, max-age=86400');
   res.send(FAVICON_SVG_CONTENT);
 };
 
-app.get('/favicon.ico', serveFavicon);
-app.get('/favicon.svg', serveFavicon);
-router.get('/favicon.ico', serveFavicon);
-router.get('/favicon.svg', serveFavicon);
+app.get('/favicon.ico', serveFaviconIco);
+app.get('/favicon.svg', serveFaviconSvg);
+router.get('/favicon.ico', serveFaviconIco);
+router.get('/favicon.svg', serveFaviconSvg);
 
 // Mount API router
 app.use('/api', router);
