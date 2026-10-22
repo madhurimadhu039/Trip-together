@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Train,
   Bus,
@@ -20,6 +20,13 @@ import type {
   RankedTransportSummary,
   SavedBookingItem,
 } from '../types';
+import {
+  getLocalTodayDateString,
+  getLocalTomorrowDateString,
+  isPastDate,
+  validateTravelDate,
+  formatDisplayDate,
+} from '../utils/dateUtils';
 
 interface TransportSectionProps {
   tripParams: TripParams;
@@ -49,13 +56,135 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
   const [roundTripCalc, setRoundTripCalc] = useState<boolean>(true);
   const [addedItemKey, setAddedItemKey] = useState<string | null>(null);
 
+  // Dynamic local date anchor (updates automatically, never hardcoded)
+  const todayStr = getLocalTodayDateString();
+
+  // Date and Budget feedback and anti-duplicate processing states
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [customBudgetInput, setCustomBudgetInput] = useState<string>('');
+  const [budgetError, setBudgetError] = useState<string | null>(null);
+  const [budgetSuccess, setBudgetSuccess] = useState<string | null>(null);
+  const [processingKeys, setProcessingKeys] = useState<Record<string, boolean>>({});
+
+  // Auto-validate and sanitize planned travel date on load or when tripParams updates
+  useEffect(() => {
+    if (tripParams.travelDate && isPastDate(tripParams.travelDate)) {
+      const today = getLocalTodayDateString();
+      setTripParams((prev) => ({
+        ...prev,
+        travelDate: today,
+        urgency: prev.urgency === 'scheduled' ? 'scheduled' : 'today',
+      }));
+      setDateError(
+        `Previously saved planned travel date was in the past. Date has been automatically updated to today (${today}).`
+      );
+    }
+  }, [tripParams.travelDate]);
+
+  /**
+   * Unified, validated Budget Addition Handler.
+   * - Prevents duplicate clicks / double-submit
+   * - Validates Planned Date is not in the past
+   * - Validates numeric amount > 0
+   * - Immediately updates trip's totalBudget in tripParams
+   * - Persists and reflects consistently
+   */
+  const handleAddBudgetAmount = (
+    rawAmount: number | string,
+    key: string,
+    bookingItem?: Omit<SavedBookingItem, 'id' | 'addedAt'>
+  ) => {
+    // 1. Prevent accidental duplicate additions caused by double-clicking or repeated handlers
+    if (processingKeys[key]) return;
+
+    // 2. Validate Planned Date before saving or adding booking
+    if (isPastDate(tripParams.travelDate)) {
+      setDateError(
+        `Cannot add transport booking for a past date (${tripParams.travelDate}). Please select today (${todayStr}) or a future date.`
+      );
+      return;
+    }
+
+    // 3. Validate budget amount: prevent invalid, empty, negative, or non-numeric input
+    const amount = Number(rawAmount);
+    if (isNaN(amount) || !isFinite(amount) || amount <= 0) {
+      setBudgetError('Invalid budget amount. Please enter a valid positive number greater than ₹0.');
+      return;
+    }
+
+    const roundedAmount = Math.round(amount);
+
+    // Lock key to prevent rapid duplicate double-clicks
+    setProcessingKeys((prev) => ({ ...prev, [key]: true }));
+    setBudgetError(null);
+    setDateError(null);
+
+    // 4. Update the displayed Total Amount immediately after budget is added
+    const previousBudget = Number(tripParams.totalBudget) || 0;
+    const newTotal = previousBudget + roundedAmount;
+
+    setTripParams((prev) => ({
+      ...prev,
+      totalBudget: (Number(prev.totalBudget) || 0) + roundedAmount,
+    }));
+
+    // 5. Shortlist transport item so it appears in bookings & expense breakdown
+    if (bookingItem) {
+      onShortlistBooking({
+        ...bookingItem,
+        totalFamilyCost: roundedAmount,
+      });
+    }
+
+    setAddedItemKey(key);
+    setBudgetSuccess(
+      `✓ Added ₹${roundedAmount.toLocaleString('en-IN')} to Trip Total Budget. Updated Total Amount: ₹${newTotal.toLocaleString('en-IN')}`
+    );
+
+    setTimeout(() => {
+      setAddedItemKey(null);
+      setBudgetSuccess(null);
+      setProcessingKeys((prev) => ({ ...prev, [key]: false }));
+    }, 2500);
+  };
+
   const handleUseInBudget = (
     key: string,
     item: Omit<SavedBookingItem, 'id' | 'addedAt'>
   ) => {
-    onShortlistBooking(item);
-    setAddedItemKey(key);
-    setTimeout(() => setAddedItemKey(null), 2500);
+    handleAddBudgetAmount(item.totalFamilyCost, key, item);
+  };
+
+  const handleCustomBudgetSubmit = () => {
+    const raw = customBudgetInput.trim();
+    if (!raw) {
+      setBudgetError('Please enter a budget amount to add.');
+      return;
+    }
+    const num = Number(raw);
+    if (isNaN(num) || !isFinite(num) || num <= 0) {
+      setBudgetError('Invalid amount. Please enter a positive number greater than ₹0.');
+      return;
+    }
+    handleAddBudgetAmount(num, 'custom-budget-entry');
+    setCustomBudgetInput('');
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (!val) return;
+    if (isPastDate(val)) {
+      setDateError(
+        `Planned travel date cannot be in the past (${val}). Please select today (${todayStr}) or a future date.`
+      );
+      return;
+    }
+    setDateError(null);
+    setTripParams((prev) => ({
+      ...prev,
+      urgency: 'scheduled',
+      travelDate: val,
+    }));
   };
 
   const multiplier = roundTripCalc ? 2 : 1;
@@ -148,23 +277,22 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
   });
 
   const handleUrgentDateSwitch = (urgency: 'today' | 'tomorrow' | 'scheduled') => {
-    const today = new Date();
     if (urgency === 'today') {
-      const iso = today.toISOString().split('T')[0];
+      const today = getLocalTodayDateString();
       setTripParams((prev) => ({
         ...prev,
         urgency,
-        travelDate: iso,
+        travelDate: today,
       }));
+      setDateError(null);
     } else if (urgency === 'tomorrow') {
-      const tomorrow = new Date();
-      tomorrow.setDate(today.getDate() + 1);
-      const iso = tomorrow.toISOString().split('T')[0];
+      const tomorrow = getLocalTomorrowDateString();
       setTripParams((prev) => ({
         ...prev,
         urgency,
-        travelDate: iso,
+        travelDate: tomorrow,
       }));
+      setDateError(null);
     } else {
       setTripParams((prev) => ({
         ...prev,
@@ -209,7 +337,7 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
                 }))
               }
               title="Swap Pickup and Destination"
-              className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-colors text-xs font-bold"
+              className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-colors text-xs font-bold cursor-pointer"
             >
               ⇄
             </button>
@@ -228,19 +356,20 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Planned Date:</span>
               <input
                 type="date"
+                min={todayStr}
                 value={tripParams.travelDate}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    setTripParams((p) => ({
-                      ...p,
-                      urgency: 'scheduled',
-                      travelDate: e.target.value,
-                    }));
-                  }
-                }}
+                onChange={handleDateChange}
                 className="text-xs font-semibold text-slate-900 focus:outline-none cursor-pointer"
-                title="Customize planned travel date"
+                title="Customize planned travel date (past dates disabled)"
               />
+            </div>
+            {/* Displayed Total Trip Budget in Header */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <IndianRupee className="w-3.5 h-3.5 text-[#0D4A42] shrink-0" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Budget:</span>
+              <span className="text-xs font-bold font-mono-num text-emerald-950">
+                ₹{tripParams.totalBudget.toLocaleString('en-IN')}
+              </span>
             </div>
           </div>
 
@@ -250,27 +379,29 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
               <button
                 type="button"
                 onClick={() => handleUrgentDateSwitch('today')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                   tripParams.urgency === 'today'
-                    ? 'bg-[#0D4A42] text-white'
+                    ? 'bg-[#0D4A42] text-white shadow-xs font-semibold'
                     : 'text-slate-700 hover:text-slate-900'
                 }`}
+                title={`Select Today (${todayStr})`}
               >
                 Urgent: Today
               </button>
               <button
                 type="button"
                 onClick={() => handleUrgentDateSwitch('tomorrow')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                   tripParams.urgency === 'tomorrow'
-                    ? 'bg-[#0D4A42] text-white'
+                    ? 'bg-[#0D4A42] text-white shadow-xs font-semibold'
                     : 'text-slate-700 hover:text-slate-900'
                 }`}
+                title="Select Tomorrow (Tatkal)"
               >
                 Tomorrow (Tatkal)
               </button>
 
-              {/* Customizable Planned Date with date picker */}
+              {/* Customizable Planned Date with date picker (past dates disabled) */}
               <div
                 className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all shrink-0 ${
                   tripParams.urgency === 'scheduled'
@@ -288,17 +419,10 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
                 </button>
                 <input
                   type="date"
+                  min={todayStr}
                   value={tripParams.travelDate}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setTripParams((prev) => ({
-                        ...prev,
-                        urgency: 'scheduled',
-                        travelDate: e.target.value,
-                      }));
-                    }
-                  }}
-                  title="Customize Planned Travel Date"
+                  onChange={handleDateChange}
+                  title="Customize Planned Travel Date (past dates disabled)"
                   className={`text-xs font-semibold rounded px-1.5 py-0.5 focus:outline-none cursor-pointer ${
                     tripParams.urgency === 'scheduled'
                       ? 'bg-white/20 text-white border border-white/30 [color-scheme:dark]'
@@ -331,6 +455,26 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Validation Feedback Banners */}
+        {dateError && (
+          <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+            <span>{dateError}</span>
+          </div>
+        )}
+        {budgetError && (
+          <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-900">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+            <span>{budgetError}</span>
+          </div>
+        )}
+        {budgetSuccess && (
+          <div className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+            <span>{budgetSuccess}</span>
+          </div>
+        )}
 
         {/* Data Honesty & Urgent Travel Guidance */}
         <div className="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs text-slate-600">
@@ -562,18 +706,11 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
             <span className="font-semibold text-slate-500">Travel Date:</span>
             <input
               type="date"
+              min={todayStr}
               value={tripParams.travelDate}
-              onChange={(e) => {
-                if (e.target.value) {
-                  setTripParams((p) => ({
-                    ...p,
-                    urgency: 'scheduled',
-                    travelDate: e.target.value,
-                  }));
-                }
-              }}
+              onChange={handleDateChange}
               className="font-bold text-slate-900 bg-transparent focus:outline-none cursor-pointer"
-              title="Customize Travel Date"
+              title="Customize Travel Date (past dates disabled)"
             />
           </div>
         </div>
@@ -622,7 +759,7 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
                       <button
                         type="button"
                         onClick={() =>
-                          onShortlistBooking({
+                          handleUseInBudget(`table-${row.id}`, {
                             category: 'Transport',
                             title: `${row.title} (${roundTripCalc ? 'Round-Trip' : 'One-Way'})`,
                             provider: row.sourceName,
@@ -632,9 +769,13 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
                             notes: `${row.subtitle} · ${row.departureTime}`,
                           })
                         }
-                        className="px-2.5 py-1 text-xs font-medium text-[#0D4A42] bg-emerald-50 hover:bg-emerald-100 rounded-md whitespace-nowrap shrink-0"
+                        className={`px-2.5 py-1 text-xs font-medium rounded-md whitespace-nowrap shrink-0 transition-colors ${
+                          addedItemKey === `table-${row.id}`
+                            ? 'bg-emerald-700 text-white'
+                            : 'text-[#0D4A42] bg-emerald-50 hover:bg-emerald-100'
+                        }`}
                       >
-                        + Budget
+                        {addedItemKey === `table-${row.id}` ? '✓ Added!' : '+ Budget'}
                       </button>
                       <a
                         href={row.officialBookingUrl}
