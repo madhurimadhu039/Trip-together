@@ -73,15 +73,15 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
 
   // Update suggestions immediately as user types
   useEffect(() => {
-    // 1. When input is empty, load default popular destinations
+    // 1. When input is empty or contains only spaces, hide suggestions completely
     if (!cleanQuery) {
-      const defaultDestinations = getRecommendedDestinations('', 8);
-      setRecommendations(defaultDestinations);
+      setRecommendations([]);
       setIsLoading(false);
+      setIsOpen(false);
       return;
     }
 
-    // 2. Compute synchronous prefix matches immediately (case-insensitive startsWith)
+    // 2. Compute synchronous prefix matches immediately (case-insensitive)
     const immediateMatches = getRecommendedDestinations(cleanQuery, 8);
     setRecommendations(immediateMatches);
 
@@ -102,7 +102,7 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
         );
         if (response.ok && !isCancelled) {
           const data = await response.json();
-          if (Array.isArray(data.destinations) && data.destinations.length > 0) {
+          if (Array.isArray(data.destinations)) {
             setRecommendations(data.destinations);
           }
         }
@@ -154,7 +154,23 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
       onClearDestination?.();
     }
 
-    setIsOpen(true);
+    // Show matching suggestions only after the user enters at least one non-space character
+    const trimmed = newVal.trim();
+    if (!trimmed) {
+      setIsOpen(false);
+      setRecommendations([]);
+    } else {
+      setIsOpen(true);
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent) => {
+    // If focus moves to something inside containerRef (like clicking option or clear button), don't close prematurely
+    if (containerRef.current && containerRef.current.contains(e.relatedTarget as Node)) {
+      return;
+    }
+    setIsOpen(false);
+    setActiveIndex(-1);
   };
 
   const handleSelect = (dest: PopularDestination) => {
@@ -183,8 +199,8 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
     onChange('');
     setCurrentSelected(null);
     onClearDestination?.();
-    const defaults = getRecommendedDestinations('', 8);
-    setRecommendations(defaults);
+    setRecommendations([]);
+    setIsOpen(false);
     setActiveIndex(-1);
     inputRef.current?.focus();
   };
@@ -309,12 +325,20 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
           type="text"
           value={value}
           onChange={handleInputChange}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => {
+            // When user clicks or focuses on an empty search bar, no destination list should appear
+            if (cleanQuery.length > 0) {
+              setIsOpen(true);
+            } else {
+              setIsOpen(false);
+            }
+          }}
+          onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           autoComplete="off"
           role="combobox"
-          aria-expanded={isOpen}
+          aria-expanded={isOpen && cleanQuery.length > 0}
           aria-autocomplete="list"
           aria-controls={listboxId}
           aria-activedescendant={
@@ -348,8 +372,8 @@ export const DestinationSearchBar: React.FC<DestinationSearchBarProps> = ({
         </button>
       </form>
 
-      {/* Autocomplete & Suggestions Popover Dropdown */}
-      {isOpen && (
+      {/* Autocomplete & Suggestions Popover Dropdown - only shown when query has non-whitespace characters */}
+      {isOpen && cleanQuery.length > 0 && (
         <div
           id={listboxId}
           role="listbox"

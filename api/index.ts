@@ -226,25 +226,15 @@ router.get('/destinations', (req, res) => {
   }
 });
 
-// Autocomplete search: strict prefix matching on destination name for the search bar dropdown
+// Autocomplete search: uses unified getRecommendedDestinations logic
 router.get('/destinations/search', (req, res) => {
   try {
-    const q = ((req.query.q as string) || '').trim().toLowerCase();
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     if (!q) {
-      return res.json({ destinations: [], total: 0 });
+      return res.json({ destinations: [], query: '', total: 0 });
     }
-    const all = db.getDestinations().filter((d) => d.published !== false);
-    // Strict startsWith prefix match on name
-    let matches = all.filter((d) => d.name.toLowerCase().startsWith(q));
-    // For queries >= 3 chars, also include state prefix matches (secondary)
-    if (q.length >= 3 && matches.length < 8) {
-      const stateMatches = all.filter(
-        (d) => !matches.some((m) => m.id === d.id) && d.state.toLowerCase().startsWith(q)
-      );
-      matches = [...matches, ...stateMatches];
-    }
-    matches = matches.slice(0, 8);
-    res.json({ destinations: matches, total: matches.length });
+    const results = getRecommendedDestinations(q, 8);
+    res.json({ destinations: results, query: q, total: results.length });
   } catch (err) {
     res.status(500).json({ error: 'Failed to search destinations' });
   }

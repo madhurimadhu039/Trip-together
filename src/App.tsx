@@ -775,6 +775,9 @@ export default function App() {
     }
     const q = raw.toLowerCase();
 
+    // Preserve the exact query in the search bar
+    setSearchQuery(raw);
+
     const activeDest =
       explicitDest ||
       (selectedDestination && selectedDestination.name.toLowerCase() === q
@@ -1320,7 +1323,14 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => navigateAndScroll('builder')}
+                    onClick={() => {
+                      if (searchQuery.trim()) {
+                        handleTopSearchSubmit(searchQuery, selectedDestination);
+                        navigateAndScroll('builder');
+                      } else {
+                        navigateAndScroll('builder');
+                      }
+                    }}
                     className="px-8 py-3.5 text-xs sm:text-sm font-bold text-slate-900 bg-white hover:bg-stone-100 rounded-xl shadow-lg transition-all hover:scale-102 cursor-pointer"
                   >
                     Plan My Trip

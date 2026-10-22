@@ -623,6 +623,319 @@ const RAW_DESTINATIONS: Omit<PopularDestination, 'country'>[] = [
     approxNightBudget: '₹1,800 – ₹5,000',
     aliases: ['shimla', 'kufri', 'mall road', 'himachal'],
   },
+  // --- All 28 Indian States (Complete Official Dataset) ---
+  {
+    id: 'dest-andhra-pradesh',
+    name: 'Andhra Pradesh',
+    fullName: 'Andhra Pradesh — Spiritual & Coastal Wonders',
+    state: 'Andhra Pradesh',
+    category: 'Pilgrimage',
+    badge: 'Spiritual Capital of India',
+    popularAttractions: 'Tirupati Balaji Temple, Srisailam Mallikarjuna Jyotirlinga, Visakhapatnam Beaches, Araku Valley',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,000 – ₹3,500',
+    aliases: ['andhra pradesh', 'andhra', 'ap', 'tirupati', 'visakhapatnam', 'vizag', 'vijayawada', 'srisailam'],
+  },
+  {
+    id: 'dest-arunachal-pradesh',
+    name: 'Arunachal Pradesh',
+    fullName: 'Arunachal Pradesh — Land of the Dawn-Lit Mountains',
+    state: 'Arunachal Pradesh',
+    category: 'Hill Station',
+    badge: 'Himalayan Frontier',
+    popularAttractions: 'Tawang Monastery, Ziro Valley, Sela Pass, Namdapha National Park, Madhuri Lake',
+    bestSeason: 'Oct – Apr',
+    approxNightBudget: '₹1,800 – ₹4,500',
+    aliases: ['arunachal pradesh', 'arunachal', 'tawang', 'ziro', 'itanagar', 'bomdila', 'sela pass'],
+  },
+  {
+    id: 'dest-assam',
+    name: 'Assam',
+    fullName: 'Assam — Tea Capital & Wildlife Haven',
+    state: 'Assam',
+    category: 'Nature & Wildlife',
+    badge: 'Home of One-Horned Rhino',
+    popularAttractions: 'Kaziranga National Park, Kamakhya Temple, Majuli River Island, Manas National Park, Brahmaputra River Cruise',
+    bestSeason: 'Nov – Apr',
+    approxNightBudget: '₹1,500 – ₹4,000',
+    aliases: ['assam', 'asom', 'ass', 'guwahati', 'kaziranga', 'kamakhya', 'majuli', 'jorhat', 'dispur', 'manas'],
+  },
+  {
+    id: 'dest-bihar',
+    name: 'Bihar',
+    fullName: 'Bihar — Cradle of Buddhism & Ancient Wisdom',
+    state: 'Bihar',
+    category: 'Pilgrimage',
+    badge: 'Sacred Buddhist Circuit',
+    popularAttractions: 'Mahabodhi Temple Bodh Gaya, Nalanda University Ruins, Rajgir Glass Bridge, Vaishali Pillar, Patna Sahib',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹900 – ₹2,800',
+    aliases: ['bihar', 'bodh gaya', 'patna', 'nalanda', 'rajgir', 'vaishali', 'gaya', 'bihar sharif'],
+  },
+  {
+    id: 'dest-chhattisgarh',
+    name: 'Chhattisgarh',
+    fullName: 'Chhattisgarh — Waterfalls & Tribal Heritage',
+    state: 'Chhattisgarh',
+    category: 'Nature & Wildlife',
+    badge: 'Niagara of India & Eco Tourism',
+    popularAttractions: 'Chitrakote Falls, Tirathgarh Falls, Bastar Craft Village, Barnawapara Sanctuary, Danteshwari Temple',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,200 – ₹3,200',
+    aliases: ['chhattisgarh', 'raipur', 'bastar', 'chitrakote', 'jagdalpur', 'bilaspur', 'dantewada'],
+  },
+  {
+    id: 'dest-gujarat',
+    name: 'Gujarat',
+    fullName: 'Gujarat — Vibrant Culture & White Desert',
+    state: 'Gujarat',
+    category: 'Heritage & Culture',
+    badge: 'Land of Legends & Asiatic Lions',
+    popularAttractions: 'Rann of Kutch, Statue of Unity, Somnath Jyotirlinga, Dwarkadhish Temple, Gir Forest National Park, Sabarmati Ashram',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,600 – ₹5,000',
+    aliases: ['gujarat', 'guj', 'kutch', 'rann of kutch', 'ahmedabad', 'somnath', 'dwarka', 'gir', 'statue of unity', 'surat', 'vadodara'],
+  },
+  {
+    id: 'dest-haryana',
+    name: 'Haryana',
+    fullName: 'Haryana — Epic Heritage & Modern Vistas',
+    state: 'Haryana',
+    category: 'Heritage & Culture',
+    badge: 'Land of Mahabharata',
+    popularAttractions: 'Brahma Sarovar Kurukshetra, Jyotisar, Sultanpur Bird Sanctuary, Pinjore Gardens, Damdama Lake',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,400 – ₹4,000',
+    aliases: ['haryana', 'kurukshetra', 'gurugram', 'gurgaon', 'panipat', 'pinjore', 'faridabad', 'sultanpur'],
+  },
+  {
+    id: 'dest-himachal-pradesh',
+    name: 'Himachal Pradesh',
+    fullName: 'Himachal Pradesh — Land of the Gods & Snow Peaks',
+    state: 'Himachal Pradesh',
+    category: 'Hill Station',
+    badge: 'Himalayan Paradise',
+    popularAttractions: 'Shimla Mall Road, Manali Rohtang Pass, Dharamshala Dalai Lama Temple, Spiti Valley, Kasol Parvati Valley',
+    bestSeason: 'Year-round',
+    approxNightBudget: '₹1,800 – ₹5,000',
+    aliases: ['himachal pradesh', 'himachal', 'hp', 'shimla', 'manali', 'dharamshala', 'kullu', 'spiti', 'dalhousie', 'kasol'],
+  },
+  {
+    id: 'dest-jharkhand',
+    name: 'Jharkhand',
+    fullName: 'Jharkhand — Waterfalls, Forests & Sacred Hills',
+    state: 'Jharkhand',
+    category: 'Nature & Wildlife',
+    badge: 'City of Waterfalls & Holy Deoghar',
+    popularAttractions: 'Baidyanath Jyotirlinga Deoghar, Hundru & Dassam Falls Ranchi, Betla National Park, Parasnath Hill',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,100 – ₹3,000',
+    aliases: ['jharkhand', 'ranchi', 'deoghar', 'jamshedpur', 'betla', 'dhanbad', 'parasnath', 'netarhat'],
+  },
+  {
+    id: 'dest-karnataka',
+    name: 'Karnataka',
+    fullName: 'Karnataka — Heritage Temples & Western Ghats',
+    state: 'Karnataka',
+    category: 'Heritage & Culture',
+    badge: 'One State, Many Worlds',
+    popularAttractions: 'Hampi UNESCO Ruins, Mysore Palace, Coorg Coffee Plantations, Gokarna Beaches, Bandipur Wildlife Reserve',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,500 – ₹4,500',
+    aliases: ['karnataka', 'kar', 'karnat', 'bangalore', 'bengaluru', 'mysore', 'mysuru', 'hampi', 'coorg', 'gokarna', 'chikmagalur', 'badami'],
+  },
+  {
+    id: 'dest-madhya-pradesh',
+    name: 'Madhya Pradesh',
+    fullName: 'Madhya Pradesh — The Heart of Incredible India',
+    state: 'Madhya Pradesh',
+    category: 'Heritage & Culture',
+    badge: 'Tiger State & Temple Architecture',
+    popularAttractions: 'Khajuraho Temples, Mahakaleshwar Ujjain, Kanha & Bandhavgarh Tiger Reserves, Bhedaghat Marble Rocks, Sanchi Stupa',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,400 – ₹4,200',
+    aliases: ['madhya pradesh', 'mp', 'bhopal', 'indore', 'ujjain', 'khajuraho', 'gwalior', 'kanha', 'bandhavgarh', 'pachmarhi', 'jabalpur'],
+  },
+  {
+    id: 'dest-maharashtra',
+    name: 'Maharashtra',
+    fullName: 'Maharashtra — Coastal Forts, Caves & Bustling Cities',
+    state: 'Maharashtra',
+    category: 'Heritage & Culture',
+    badge: 'Western Gateway & Maratha Heritage',
+    popularAttractions: 'Ajanta & Ellora Caves, Shirdi Sai Baba Temple, Gateway of India Mumbai, Lonavala-Khandala Hills, Mahabaleshwar',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,800 – ₹5,500',
+    aliases: ['maharashtra', 'mumbai', 'pune', 'shirdi', 'lonavala', 'mahabaleshwar', 'ajanta', 'ellora', 'nashik', 'aurangabad', 'alibaug'],
+  },
+  {
+    id: 'dest-manipur',
+    name: 'Manipur',
+    fullName: 'Manipur — Jewel of India & Floating Lake',
+    state: 'Manipur',
+    category: 'Nature & Wildlife',
+    badge: 'Floating Islands & Orchid Valley',
+    popularAttractions: 'Loktak Floating Lake, Keibul Lamjao National Park (Sangai Deer), Kangla Fort Imphal, INA War Memorial',
+    bestSeason: 'Oct – Apr',
+    approxNightBudget: '₹1,500 – ₹3,800',
+    aliases: ['manipur', 'imphal', 'loktak', 'keibul lamjao', 'sangai', 'kangla', 'ukhrul', 'moirang'],
+  },
+  {
+    id: 'dest-meghalaya',
+    name: 'Meghalaya',
+    fullName: 'Meghalaya — Abode of Clouds & Living Root Bridges',
+    state: 'Meghalaya',
+    category: 'Nature & Wildlife',
+    badge: 'Living Root Bridges & Crystal Waters',
+    popularAttractions: 'Cherrapunji Waterfalls, Double Decker Living Root Bridge, Dawki Umngot River, Mawlynnong Cleanest Village, Shillong Peak',
+    bestSeason: 'Sep – May',
+    approxNightBudget: '₹1,600 – ₹4,200',
+    aliases: ['meghalaya', 'shillong', 'cherrapunji', 'sohra', 'dawki', 'mawlynnong', 'root bridges', 'nohkalikai', 'elephant falls'],
+  },
+  {
+    id: 'dest-mizoram',
+    name: 'Mizoram',
+    fullName: 'Mizoram — Land of Rolling Hills & Bamboo Groves',
+    state: 'Mizoram',
+    category: 'Hill Station',
+    badge: 'Peaceful Hill Sanctuaries',
+    popularAttractions: 'Vantawng Falls, Reiek Tlang, Phawngpui Blue Mountain, Solomon Temple Aizawl, Tam Dil Lake',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,400 – ₹3,500',
+    aliases: ['mizoram', 'aizawl', 'reiek', 'vantawng', 'phawngpui', 'champhai', 'tam dil'],
+  },
+  {
+    id: 'dest-nagaland',
+    name: 'Nagaland',
+    fullName: 'Nagaland — Land of Festivals & Misty Valleys',
+    state: 'Nagaland',
+    category: 'Heritage & Culture',
+    badge: 'Hornbill Festival & Pristine Valleys',
+    popularAttractions: 'Dzukou Valley, Kohima War Cemetery, Kisama Heritage Village, Khonoma Green Village, Mokokchung',
+    bestSeason: 'Oct – May (Hornbill Dec)',
+    approxNightBudget: '₹1,500 – ₹4,000',
+    aliases: ['nagaland', 'kohima', 'hornbill', 'dzukou', 'dimapur', 'khonoma', 'kisama', 'mokokchung'],
+  },
+  {
+    id: 'dest-odisha',
+    name: 'Odisha',
+    fullName: 'Odisha — Coastal Shrines, Temples & Sun Heritage',
+    state: 'Odisha',
+    category: 'Pilgrimage',
+    badge: 'Golden Triangle of the East',
+    popularAttractions: 'Puri Jagannath Temple, Konark Sun Temple, Chilika Lagoon & Irrawaddy Dolphins, Lingaraj Temple Bhubaneswar',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,200 – ₹3,800',
+    aliases: ['odisha', 'orissa', 'puri', 'konark', 'bhubaneswar', 'chilika', 'jagannath', 'sun temple', 'cuttack'],
+  },
+  {
+    id: 'dest-punjab',
+    name: 'Punjab',
+    fullName: 'Punjab — Land of Five Rivers & Golden Shrine',
+    state: 'Punjab',
+    category: 'Pilgrimage',
+    badge: 'Spiritual Golden Temple & Vibrant Farms',
+    popularAttractions: 'Golden Temple Amritsar, Wagah Border Ceremony, Jallianwala Bagh, Anandpur Sahib, Sheesh Mahal Patiala',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,300 – ₹3,800',
+    aliases: ['punjab', 'amritsar', 'golden temple', 'wagah', 'chandigarh', 'ludhiana', 'jalandhar', 'anandpur sahib', 'patiala'],
+  },
+  {
+    id: 'dest-rajasthan',
+    name: 'Rajasthan',
+    fullName: 'Rajasthan — Land of Kings, Forts & Thar Desert',
+    state: 'Rajasthan',
+    category: 'Heritage & Culture',
+    badge: 'Royal Palaces & Desert Safaris',
+    popularAttractions: 'Jaipur Amber Palace & Hawa Mahal, Udaipur Lake Pichola, Jodhpur Mehrangarh Fort, Jaisalmer Sand Dunes, Pushkar Lake',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,800 – ₹6,000',
+    aliases: ['rajasthan', 'raj', 'jaipur', 'udaipur', 'jodhpur', 'jaisalmer', 'pushkar', 'bikaner', 'mount abu', 'ranthambore', 'thar desert'],
+  },
+  {
+    id: 'dest-sikkim',
+    name: 'Sikkim',
+    fullName: 'Sikkim — Kanchenjunga Vistas & Himalayan Monasteries',
+    state: 'Sikkim',
+    category: 'Hill Station',
+    badge: 'High Altitude Lakes & Valley of Flowers',
+    popularAttractions: 'Tsomgo Lake & Nathula Pass, Gurudongmar Lake, Rumtek Monastery, Pelling Skywalk, Yumthang Valley',
+    bestSeason: 'Mar – May & Oct – Dec',
+    approxNightBudget: '₹1,800 – ₹4,800',
+    aliases: ['sikkim', 'gangtok', 'tsomgo', 'nathula', 'pelling', 'yumthang', 'lachung', 'kanchenjunga', 'gurudongmar'],
+  },
+  {
+    id: 'dest-tamil-nadu',
+    name: 'Tamil Nadu',
+    fullName: 'Tamil Nadu — Dravidian Temples & Serene Hills',
+    state: 'Tamil Nadu',
+    category: 'Pilgrimage',
+    badge: 'Dravidian Architecture & Sacred Coasts',
+    popularAttractions: 'Meenakshi Amman Temple Madurai, Rameshwaram Temple, Shore Temple Mahabalipuram, Ooty & Kodaikanal Hills, Brihadisvara Temple Thanjavur',
+    bestSeason: 'Nov – Mar',
+    approxNightBudget: '₹1,200 – ₹3,800',
+    aliases: ['tamil nadu', 'tamilnadu', 'tn', 'chennai', 'madurai', 'rameshwaram', 'ooty', 'kodaikanal', 'kanyakumari', 'thanjavur', 'mahabalipuram'],
+  },
+  {
+    id: 'dest-telangana',
+    name: 'Telangana',
+    fullName: 'Telangana — Nizami Grandeur & Heritage Forts',
+    state: 'Telangana',
+    category: 'Heritage & Culture',
+    badge: 'City of Pearls & Ramappa UNESCO Wonder',
+    popularAttractions: 'Charminar & Golconda Fort Hyderabad, Ramappa Temple UNESCO, Warangal Thousand Pillar Temple, Yadagirigutta, Nagarjuna Sagar',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,400 – ₹4,500',
+    aliases: ['telangana', 'hyderabad', 'charminar', 'golconda', 'warangal', 'ramappa', 'yadagirigutta', 'secunderabad'],
+  },
+  {
+    id: 'dest-tripura',
+    name: 'Tripura',
+    fullName: 'Tripura — Palaces, Lake Castles & Rock Carvings',
+    state: 'Tripura',
+    category: 'Heritage & Culture',
+    badge: 'Water Palaces & Sacred Rock Reliefs',
+    popularAttractions: 'Ujjayanta Palace Agartala, Neermahal Water Palace, Unakoti Ancient Rock Carvings, Tripura Sundari Temple Udaipur',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,100 – ₹3,200',
+    aliases: ['tripura', 'agartala', 'neermahal', 'unakoti', 'ujjayanta', 'tripura sundari', 'jampui hills'],
+  },
+  {
+    id: 'dest-uttar-pradesh',
+    name: 'Uttar Pradesh',
+    fullName: 'Uttar Pradesh — Sacred Ghats, Taj Mahal & Epic Heritage',
+    state: 'Uttar Pradesh',
+    category: 'Pilgrimage',
+    badge: 'Spiritual Heart & Wonder of the World',
+    popularAttractions: 'Kashi Vishwanath & Ganga Ghats Varanasi, Taj Mahal Agra, Ram Janmabhoomi Ayodhya, Krishna Janmabhoomi Mathura, Triveni Sangam Prayagraj',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,200 – ₹4,000',
+    aliases: ['uttar pradesh', 'up', 'varanasi', 'agra', 'ayodhya', 'mathura', 'vrindavan', 'lucknow', 'prayagraj', 'kashi', 'taj mahal'],
+  },
+  {
+    id: 'dest-uttarakhand',
+    name: 'Uttarakhand',
+    fullName: 'Uttarakhand — Devbhoomi Yoga, Rafting & Char Dham',
+    state: 'Uttarakhand',
+    category: 'Pilgrimage',
+    badge: 'Land of Gods & Himalayas',
+    popularAttractions: 'Rishikesh Yoga & Rafting, Haridwar Ganga Aarti, Kedarnath & Badrinath Temples, Nainital & Mussoorie Lakes, Valley of Flowers',
+    bestSeason: 'Mar – Jun & Sep – Nov',
+    approxNightBudget: '₹1,500 – ₹4,800',
+    aliases: ['uttarakhand', 'uk', 'uttaranchal', 'rishikesh', 'haridwar', 'kedarnath', 'badrinath', 'nainital', 'mussoorie', 'dehradun', 'auli'],
+  },
+  {
+    id: 'dest-west-bengal',
+    name: 'West Bengal',
+    fullName: 'West Bengal — Cultural Capital, Tea Hills & Mangroves',
+    state: 'West Bengal',
+    category: 'Heritage & Culture',
+    badge: 'City of Joy, Darjeeling Toy Train & Royal Bengal Tiger',
+    popularAttractions: 'Victoria Memorial & Howrah Bridge Kolkata, Darjeeling Tiger Hill & Toy Train, Sundarbans Mangrove Forest, Kalimpong, Digha Beach',
+    bestSeason: 'Oct – Mar',
+    approxNightBudget: '₹1,400 – ₹4,500',
+    aliases: ['west bengal', 'bengal', 'wb', 'kolkata', 'calcutta', 'darjeeling', 'sundarbans', 'sunderbans', 'howrah', 'digha', 'kalimpong', 'siliguri'],
+  },
 ];
 
 export const POPULAR_DESTINATIONS: PopularDestination[] = RAW_DESTINATIONS.map((d) => ({
@@ -631,57 +944,91 @@ export const POPULAR_DESTINATIONS: PopularDestination[] = RAW_DESTINATIONS.map((
 }));
 
 /**
- * Filter destinations based on user input query using precise prefix matching.
+ * Filter destinations based on user input query.
  * 
  * Rules:
- * 1. When query is empty: returns sensible default popular destinations.
- * 2. When query is non-empty: strictly matches destination.name.toLowerCase().startsWith(cleanQuery).
- *    Never displays destinations beginning with unrelated letters (e.g. typing 'K' will only
- *    match destinations starting with K such as Kakinada, Kolkata, Kochi, Kathmandu).
- * 3. Case-insensitive and trimmed.
+ * 1. When query is empty or only whitespace: returns [] (suggestions remain hidden until user types).
+ * 2. When query is non-empty: case-insensitive, trimmed matching.
+ *    - Destination name exact match
+ *    - Destination name prefix match (e.g. 'Ass' -> Assam, 'Guj' -> Gujarat, 'K' -> Karnataka, Kerala, Kolkata, Kochi, etc.)
+ *    - Any word in destination name starts with query (e.g. 'Bengal' -> West Bengal, 'Pradesh' -> Andhra Pradesh...)
+ *    - Exact state match
+ *    - For queries >= 3 chars, state name prefix match or alias prefix match
+ * 3. Never returns destinations beginning with unrelated letters for single-letter queries (e.g. typing 'K' only
+ *    shows destinations/states starting with K such as Karnataka and Kerala).
+ * 4. Deterministic sorting: exact match first, then prefix match, then alphabetical.
  */
 export function getRecommendedDestinations(query: string, maxResults = 8): PopularDestination[] {
-  const clean = query.trim().toLowerCase();
+  const clean = (query || '').trim().toLowerCase();
 
-  // 1. If query is empty, return curated default popular destinations
+  // 1. If query is empty or contains only spaces, suggestions must remain hidden
   if (!clean) {
-    const defaultIds = [
-      'dest-tirupati',
-      'dest-bangalore',
-      'dest-goa',
-      'dest-jaipur',
-      'dest-kerala',
-      'dest-manali',
-      'dest-mumbai',
-      'dest-varanasi',
-    ];
-    return POPULAR_DESTINATIONS.filter((d) => defaultIds.includes(d.id)).slice(0, maxResults);
+    return [];
   }
 
-  // 2. Strict prefix match against destination name as required
-  const prefixMatches = POPULAR_DESTINATIONS.filter((dest) =>
-    dest.name.toLowerCase().startsWith(clean)
-  );
-
-  // 3. For queries >= 3 chars, also include destinations where a primary alias starts with prefix
-  let combined = prefixMatches;
-  if (clean.length >= 3 && prefixMatches.length < maxResults) {
-    const aliasMatches = POPULAR_DESTINATIONS.filter(
-      (dest) =>
-        !prefixMatches.some((p) => p.id === dest.id) &&
-        dest.aliases.some((a) => a.toLowerCase().startsWith(clean))
-    );
-    combined = [...prefixMatches, ...aliasMatches];
+  interface ScoredDestination {
+    dest: PopularDestination;
+    priority: number;
+    subScore: number;
   }
 
-  // 4. Sort: exact match first, then alphabetical
-  return combined
-    .sort((a, b) => {
-      const aName = a.name.toLowerCase();
-      const bName = b.name.toLowerCase();
-      if (aName === clean && bName !== clean) return -1;
-      if (bName === clean && aName !== clean) return 1;
-      return aName.localeCompare(bName);
-    })
-    .slice(0, maxResults);
+  const scored: ScoredDestination[] = [];
+
+  for (const dest of POPULAR_DESTINATIONS) {
+    const nameLower = dest.name.toLowerCase();
+    const stateLower = dest.state.toLowerCase();
+    const nameWords = nameLower.split(/[\s,()/-]+/).filter(Boolean);
+    const stateWords = stateLower.split(/[\s,()/-]+/).filter(Boolean);
+
+    let priority = 99;
+    let subScore = 99;
+
+    // Priority 1: Exact destination name match (e.g. "Assam" -> Assam, "Goa" -> Goa)
+    if (nameLower === clean) {
+      priority = 1;
+      subScore = 0;
+    }
+    // Priority 2: Destination name starts with query (e.g. "Ass" -> Assam, "Guj" -> Gujarat, "K" -> Karnataka, Kerala...)
+    else if (nameLower.startsWith(clean)) {
+      priority = 2;
+      subScore = nameLower.length;
+    }
+    // Priority 3: Any word in destination name starts with query (e.g. "Bengal" -> West Bengal)
+    else if (nameWords.some((w) => w.startsWith(clean))) {
+      priority = 3;
+      subScore = nameWords.findIndex((w) => w.startsWith(clean));
+    }
+    // Priority 4: Exact state match (e.g. user typed "Karnataka" - state record itself is Priority 1, city in state is Priority 4)
+    else if (stateLower === clean) {
+      priority = 4;
+      subScore = 0;
+    }
+    // Priority 5: For queries >= 3 chars, state name starts with query or word in state name starts with query
+    else if (clean.length >= 3 && (stateLower.startsWith(clean) || stateWords.some((w) => w.startsWith(clean)))) {
+      priority = 5;
+      subScore = stateLower.length;
+    }
+    // Priority 6: For queries >= 3 chars, aliases match
+    else if (
+      clean.length >= 3 &&
+      dest.aliases &&
+      dest.aliases.some((a) => a.toLowerCase().startsWith(clean) || a.toLowerCase() === clean)
+    ) {
+      priority = 6;
+      subScore = 10;
+    }
+
+    if (priority < 99) {
+      scored.push({ dest, priority, subScore });
+    }
+  }
+
+  // Sort by priority first, then subScore, then alphabetical by name
+  scored.sort((a, b) => {
+    if (a.priority !== b.priority) return a.priority - b.priority;
+    if (a.subScore !== b.subScore) return a.subScore - b.subScore;
+    return a.dest.name.localeCompare(b.dest.name);
+  });
+
+  return scored.slice(0, maxResults).map((s) => s.dest);
 }
