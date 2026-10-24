@@ -1,5 +1,6 @@
 import React from 'react';
-import { Compass, Home, Search, Package, MapPin, ArrowRight, HelpCircle } from 'lucide-react';
+import { Home, Search, Package, MapPin, ArrowRight, HelpCircle } from 'lucide-react';
+import { TripTogetherSymbol } from './TripTogetherLogo';
 
 interface NotFoundPageProps {
   onNavigateHome?: () => void;
@@ -18,9 +19,7 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({
     <div className="min-h-[70vh] max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-16 flex flex-col items-center justify-center text-center">
       {/* 404 Visual Badge */}
       <div className="relative mb-6">
-        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-br from-[#0F1E36] via-[#1E3A8A] to-[#0D9488] flex items-center justify-center shadow-xl border border-white/20 mx-auto text-white">
-          <Compass className="w-12 h-12 sm:w-14 sm:h-14 text-teal-300 animate-pulse" />
-        </div>
+        <TripTogetherSymbol sizeClass="w-24 h-24 sm:w-28 sm:h-28" className="mx-auto drop-shadow-xl" />
         <span className="absolute -bottom-3 -right-2 px-3 py-1 rounded-full bg-rose-500 text-white font-mono-num font-bold text-xs shadow-md">
           404 Error
         </span>

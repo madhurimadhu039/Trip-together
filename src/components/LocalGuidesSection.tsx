@@ -13,6 +13,7 @@ import {
   Award,
   Search,
   Filter,
+  ChevronDown,
 } from 'lucide-react';
 import type { LocalGuideItem } from '../types';
 
@@ -32,6 +33,9 @@ export const LocalGuidesSection: React.FC<LocalGuidesSectionProps> = ({
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showAllGuides, setShowAllGuides] = useState<boolean>(false);
+
+  const GUIDES_INITIAL_COUNT = 3;
 
   const locations = ['all', ...Array.from(new Set(guides.map((g) => g.serviceLocation.split('&')[0].trim())))];
 
@@ -149,109 +153,129 @@ export const LocalGuidesSection: React.FC<LocalGuidesSectionProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredGuides.map((guide) => (
-            <div
-              key={guide.id}
-              className="bg-white rounded-2xl border border-stone-200/90 hover:border-emerald-500/40 hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden group"
-            >
-              <div className="p-5">
-                {/* Header: Avatar, Name, Location & Verification Badge */}
-                <div className="flex items-start gap-4">
-                  <img
-                    src={guide.avatar}
-                    alt={guide.name}
-                    className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-xs shrink-0 group-hover:scale-105 transition-transform"
-                    loading="lazy"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="text-base font-bold text-slate-900 truncate">{guide.name}</h3>
-                      {guide.verificationStatus === 'verified' && (
-                        <span title="Verified by Trip Together Platform" className="shrink-0">
-                          <ShieldCheck className="w-4 h-4 text-emerald-600 inline" />
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="text-xs text-stone-500 flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                      <span className="truncate">{guide.serviceLocation}</span>
-                    </p>
-
-                    <div className="flex items-center gap-2 mt-1.5 text-xs">
-                      <div className="inline-flex items-center gap-1 text-amber-600 font-semibold">
-                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                        <span>{guide.rating.toFixed(1)}</span>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {(showAllGuides ? filteredGuides : filteredGuides.slice(0, GUIDES_INITIAL_COUNT)).map((guide) => (
+              <div
+                key={guide.id}
+                className="bg-white rounded-2xl border border-stone-200/90 hover:border-emerald-500/40 hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden group"
+              >
+                <div className="p-5">
+                  {/* Header: Avatar, Name, Location & Verification Badge */}
+                  <div className="flex items-start gap-4">
+                    <img
+                      src={guide.avatar}
+                      alt={guide.name}
+                      className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-xs shrink-0 group-hover:scale-105 transition-transform"
+                      loading="lazy"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="text-base font-bold text-slate-900 truncate">{guide.name}</h3>
+                        {guide.verificationStatus === 'verified' && (
+                          <span title="Verified by Trip Together Platform" className="shrink-0">
+                            <ShieldCheck className="w-4 h-4 text-emerald-600 inline" />
+                          </span>
+                        )}
                       </div>
-                      <span className="text-stone-300">·</span>
-                      <span className="text-stone-500">{guide.reviewCount} reviews</span>
-                      <span className="text-stone-300">·</span>
-                      <span className="text-stone-600 font-medium">{guide.experienceYears}y exp</span>
+
+                      <p className="text-xs text-stone-500 flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                        <span className="truncate">{guide.serviceLocation}</span>
+                      </p>
+
+                      <div className="flex items-center gap-2 mt-1.5 text-xs">
+                        <div className="inline-flex items-center gap-1 text-amber-600 font-semibold">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                          <span>{guide.rating.toFixed(1)}</span>
+                        </div>
+                        <span className="text-stone-300">·</span>
+                        <span className="text-stone-500">{guide.reviewCount} reviews</span>
+                        <span className="text-stone-300">·</span>
+                        <span className="text-stone-600 font-medium">{guide.experienceYears}y exp</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Bio snippet */}
-                <p className="text-xs text-stone-600 mt-3.5 line-clamp-2 leading-relaxed">
-                  {guide.bio}
-                </p>
+                  {/* Bio snippet */}
+                  <p className="text-xs text-stone-600 mt-3.5 line-clamp-2 leading-relaxed">
+                    {guide.bio}
+                  </p>
 
-                {/* Specialties Tags */}
-                <div className="mt-3.5 flex flex-wrap gap-1.5">
-                  {guide.specialties.slice(0, 3).map((spec, idx) => (
-                    <span
-                      key={idx}
-                      className="text-[11px] px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-medium"
-                    >
-                      {spec}
-                    </span>
-                  ))}
-                  {guide.specialties.length > 3 && (
-                    <span className="text-[11px] px-1.5 py-0.5 rounded-md text-stone-400">
-                      +{guide.specialties.length - 3}
-                    </span>
-                  )}
-                </div>
+                  {/* Specialties Tags */}
+                  <div className="mt-3.5 flex flex-wrap gap-1.5">
+                    {guide.specialties.slice(0, 3).map((spec, idx) => (
+                      <span
+                        key={idx}
+                        className="text-[11px] px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-medium"
+                      >
+                        {spec}
+                      </span>
+                    ))}
+                    {guide.specialties.length > 3 && (
+                      <span className="text-[11px] px-1.5 py-0.5 rounded-md text-stone-400">
+                        +{guide.specialties.length - 3}
+                      </span>
+                    )}
+                  </div>
 
-                {/* Languages */}
-                <div className="mt-3 flex items-center gap-1.5 text-[11px] text-stone-500">
-                  <Languages className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                  <span className="truncate">{guide.languages.join(', ')}</span>
-                </div>
-              </div>
-
-              {/* Card Footer: Pricing & Action Buttons */}
-              <div className="p-4 bg-stone-50/70 border-t border-stone-100 flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs text-stone-500 font-medium">Daily Rate</div>
-                  <div className="text-base font-bold text-slate-900">
-                    ₹{guide.dailyRate.toLocaleString('en-IN')}
-                    <span className="text-[11px] text-stone-400 font-normal"> / day</span>
+                  {/* Languages */}
+                  <div className="mt-3 flex items-center gap-1.5 text-[11px] text-stone-500">
+                    <Languages className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                    <span className="truncate">{guide.languages.join(', ')}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onSelectGuide(guide)}
-                    className="px-3 py-1.5 text-xs font-semibold text-stone-700 hover:text-slate-900 hover:bg-stone-200/80 rounded-lg transition-colors cursor-pointer"
-                  >
-                    View Profile
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onContactGuide(guide)}
-                    className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-[#0D4A42] hover:bg-[#09352F] text-white shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>Contact</span>
-                  </button>
+                {/* Card Footer: Pricing & Action Buttons */}
+                <div className="p-4 bg-stone-50/70 border-t border-stone-100 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs text-stone-500 font-medium">Daily Rate</div>
+                    <div className="text-base font-bold text-slate-900">
+                      ₹{guide.dailyRate.toLocaleString('en-IN')}
+                      <span className="text-[11px] text-stone-400 font-normal"> / day</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onSelectGuide(guide)}
+                      className="px-3 py-1.5 text-xs font-semibold text-stone-700 hover:text-slate-900 hover:bg-stone-200/80 rounded-lg transition-colors cursor-pointer"
+                    >
+                      View Profile
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onContactGuide(guide)}
+                      className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-[#0D4A42] hover:bg-[#09352F] text-white shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Contact</span>
+                    </button>
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+
+          {/* See More / Show Less for Local Guides */}
+          {filteredGuides.length > GUIDES_INITIAL_COUNT && (
+            <div className="flex items-center justify-center pt-4">
+              <button
+                type="button"
+                onClick={() => setShowAllGuides(!showAllGuides)}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-slate-800 text-xs font-bold transition-colors cursor-pointer shadow-xs"
+              >
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showAllGuides ? 'rotate-180' : ''}`} />
+                <span>
+                  {showAllGuides
+                    ? 'Show Less'
+                    : `See More Guides (${filteredGuides.length - GUIDES_INITIAL_COUNT} more)`}
+                </span>
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </section>
   );

@@ -99,6 +99,7 @@ import { PrivacyPolicyPage } from './components/PrivacyPolicyPage';
 import { TermsPage } from './components/TermsPage';
 import { HowItWorksPage } from './components/HowItWorksPage';
 import { NotFoundPage } from './components/NotFoundPage';
+import { TripTogetherLogo, TripTogetherSymbol } from './components/TripTogetherLogo';
 import {
   getSectionFromCurrentUrl,
   getUrlForSection,
@@ -895,27 +896,21 @@ export default function App() {
       {/* TOP NAVIGATION BAR */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/90 shadow-xs">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-3.5 flex items-center justify-between gap-4">
-          {/* Brand Logo */}
-          <a
-            href="#top"
-            onClick={(e) => {
-              e.preventDefault();
-              navigateAndScroll('dashboard');
-            }}
-            className="flex items-center gap-3 group shrink-0"
-          >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0F1E36] via-[#1E3A8A] to-[#0D9488] flex items-center justify-center shadow-md border border-white/20 group-hover:scale-105 transition-transform shrink-0">
-              <Compass className="w-6 h-6 text-teal-300" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-bold tracking-tight text-[#0F1E36] font-serif-display leading-none">
-                TripTogether
-              </span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#0D9488] mt-1">
-                Travel Platform
-              </span>
-            </div>
-          </a>
+          {/* Brand Logo (Requirement 1 & 9) */}
+          <div className="hidden sm:block">
+            <TripTogetherLogo
+              variant="horizontal"
+              onClick={() => navigateAndScroll('dashboard')}
+              ariaLabel="Trip Together Homepage"
+            />
+          </div>
+          <div className="sm:hidden">
+            <TripTogetherLogo
+              variant="compact"
+              onClick={() => navigateAndScroll('dashboard')}
+              ariaLabel="Trip Together Homepage"
+            />
+          </div>
 
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center gap-6 text-xs sm:text-sm font-medium text-slate-600">
@@ -1315,14 +1310,14 @@ export default function App() {
             <div className="fixed top-0 right-0 bottom-0 w-full max-w-sm bg-white shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200 overflow-y-auto">
               {/* Drawer Top Header */}
               <div className="p-4 border-b border-stone-200 flex items-center justify-between bg-stone-50">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0F1E36] to-[#0D9488] flex items-center justify-center text-white shadow-xs">
-                    <Compass className="w-4 h-4 text-teal-300" />
-                  </div>
-                  <span className="font-bold text-slate-900 text-sm font-serif-display">
-                    TripTogether
-                  </span>
-                </div>
+                <TripTogetherLogo
+                  variant="compact"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigateAndScroll('dashboard');
+                  }}
+                  ariaLabel="Trip Together Homepage"
+                />
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(false)}
@@ -2564,26 +2559,12 @@ export default function App() {
         <div className="max-w-[1280px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10 pb-12 border-b border-white/10">
           {/* Brand Column (Requirement 1 & 5) */}
           <div className="sm:col-span-2 lg:col-span-4 space-y-4">
-            <a
-              href="#top"
-              onClick={(e) => {
-                e.preventDefault();
-                navigateAndScroll('dashboard');
-              }}
-              className="flex items-center gap-3 group shrink-0 w-fit"
-            >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0F1E36] via-[#1E3A8A] to-[#0D9488] flex items-center justify-center shadow-md border border-white/20 group-hover:scale-105 transition-transform shrink-0">
-                <Compass className="w-6 h-6 text-teal-300" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-bold tracking-tight text-white font-serif-display leading-none">
-                  TripTogether
-                </span>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-400 mt-1">
-                  Travel Platform
-                </span>
-              </div>
-            </a>
+            <TripTogetherLogo
+              variant="horizontal"
+              theme="dark"
+              onClick={() => navigateAndScroll('dashboard')}
+              ariaLabel="Trip Together Homepage"
+            />
             <p className="text-xs text-stone-300 max-w-sm leading-relaxed">
               India's collaborative travel platform. Discover verified destinations, compare transparent rail and road tariffs, book certified local guides, and travel together with total trust.
             </p>
@@ -2926,9 +2907,7 @@ export default function App() {
               </button>
 
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-white/15 flex items-center justify-center text-teal-300 shrink-0">
-                  <UserCircle className="w-6 h-6" />
-                </div>
+                <TripTogetherSymbol sizeClass="w-11 h-11" />
                 <div>
                   <h3 className="text-xl font-bold font-serif-display">
                     {authMode === 'signin' && 'Sign In to TripTogether'}

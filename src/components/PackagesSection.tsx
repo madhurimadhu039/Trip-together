@@ -48,10 +48,17 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({
   const [addedPackageKey, setAddedPackageKey] = useState<string | null>(null);
   const [expandedPackageId, setExpandedPackageId] = useState<string | null>(null);
 
+  const [showAllPackages, setShowAllPackages] = useState<boolean>(false);
+  const PACKAGES_INITIAL_COUNT = 2;
+
   const filteredPackages = packages.filter((pkg) => {
     if (durationFilter === 'all') return true;
     return pkg.durationDays === durationFilter;
   });
+
+  const visiblePackages = showAllPackages
+    ? filteredPackages
+    : filteredPackages.slice(0, PACKAGES_INITIAL_COUNT);
 
   return (
     <div className="space-y-8">
@@ -117,7 +124,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({
 
       {/* Tour Package Cards */}
       <div className="grid grid-cols-1 gap-6">
-        {filteredPackages.map((pkg) => {
+        {visiblePackages.map((pkg) => {
           const adultAndSeniorCount = tripParams.adults + tripParams.seniors;
           const totalFamilyPackagePrice =
             pkg.pricePerAdult * adultAndSeniorCount + pkg.pricePerChild * tripParams.children;
@@ -420,6 +427,28 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({
           );
         })}
       </div>
+
+      {/* See More / Show Less for Packages */}
+      {filteredPackages.length > PACKAGES_INITIAL_COUNT && (
+        <div className="flex items-center justify-center pt-2">
+          <button
+            type="button"
+            onClick={() => setShowAllPackages(!showAllPackages)}
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-slate-800 text-xs font-bold transition-colors cursor-pointer shadow-xs"
+          >
+            <ChevronDown
+              className={`w-4 h-4 transition-transform duration-200 ${
+                showAllPackages ? 'rotate-180' : ''
+              }`}
+            />
+            <span>
+              {showAllPackages
+                ? 'Show Less'
+                : `See More Packages (${filteredPackages.length - PACKAGES_INITIAL_COUNT} more)`}
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* Section 6: Third-Party Provider Adapter & Normalization Registry */}
       <div className="bg-white border border-slate-200 rounded-xl p-6">

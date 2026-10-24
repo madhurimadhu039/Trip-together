@@ -855,6 +855,28 @@
   ],
   "contactTickets": [
     {
+      "name": "Madhuri Test",
+      "email": "test@example.com",
+      "subject": "Inquiry",
+      "category": "Trip Planning",
+      "message": "Hello from automated test",
+      "id": "tkt-1792855154246",
+      "ticketRef": "TT-SUP-2026-2159",
+      "status": "open",
+      "createdAt": "2026-10-24T15:19:14.246Z"
+    },
+    {
+      "name": "Madhuri Rao",
+      "email": "madhuri.test@example.com",
+      "subject": "Family Pilgrimage Tour",
+      "category": "Trip Planning & Inquiry",
+      "message": "Hello, we are planning a family trip to Tirupati for 4 adults and 1 senior. Could you please share available dates?",
+      "id": "tkt-1792853090628",
+      "ticketRef": "TT-SUP-2026-1159",
+      "status": "open",
+      "createdAt": "2026-10-24T14:44:50.628Z"
+    },
+    {
       "name": "Ananya Sen",
       "email": "ananya@example.com",
       "subject": "Flight booking assistance",
@@ -887,6 +909,18 @@
     }
   ],
   "auditLogs": [
+    {
+      "id": "log-1792855154246-371",
+      "action": "Support Ticket opened: TT-SUP-2026-2159",
+      "actor": "Customer",
+      "timestamp": "2026-10-24T15:19:14.246Z"
+    },
+    {
+      "id": "log-1792853090628-468",
+      "action": "Support Ticket opened: TT-SUP-2026-1159",
+      "actor": "Customer",
+      "timestamp": "2026-10-24T14:44:50.628Z"
+    },
     {
       "id": "log-1792505419006-901",
       "action": "Updated verification for guide Kavita Deshmukh to verified",

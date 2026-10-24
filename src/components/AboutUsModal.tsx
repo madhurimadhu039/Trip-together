@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   X,
-  Compass,
   ShieldCheck,
   Users,
   Award,
@@ -11,6 +10,7 @@ import {
   Sparkles,
   ArrowRight,
 } from 'lucide-react';
+import { TripTogetherSymbol } from './TripTogetherLogo';
 
 interface AboutUsModalProps {
   isOpen: boolean;
@@ -41,7 +41,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
 
           <div className="max-w-xl">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold mb-3">
-              <Compass className="w-4 h-4 text-teal-300" />
+              <TripTogetherSymbol sizeClass="w-4 h-4" />
               <span>Our Story & Mission</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold font-serif-display tracking-tight">
