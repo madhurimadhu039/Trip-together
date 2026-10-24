@@ -1,6 +1,6 @@
 {
   "name": "TripTogether",
-  "description": "AI-powered family trip planner for comparing trains, buses, and flights, discovering budget-verified hotels and tour packages, building custom itineraries, and collaborating with real-time family chat, packing checklists, and consent-based live location tracking.",
+  "description": "Plan family trips together — compare trains, buses, and flights, discover budget-verified hotels and tour packages, build custom itineraries, and collaborate with real-time family chat, packing checklists, and consent-based live location tracking.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
