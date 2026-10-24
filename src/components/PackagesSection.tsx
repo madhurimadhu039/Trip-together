@@ -11,6 +11,7 @@ import {
   Eye,
   Heart,
   Calendar,
+  ChevronDown,
 } from 'lucide-react';
 import type {
   TripParams,
@@ -45,6 +46,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({
 }) => {
   const [durationFilter, setDurationFilter] = useState<'all' | 1 | 2 | 3>('all');
   const [addedPackageKey, setAddedPackageKey] = useState<string | null>(null);
+  const [expandedPackageId, setExpandedPackageId] = useState<string | null>(null);
 
   const filteredPackages = packages.filter((pkg) => {
     if (durationFilter === 'all') return true;
@@ -123,90 +125,134 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({
           return (
             <div
               key={pkg.id}
-              className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col justify-between"
+              className="bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-4">
-                  <div className="flex items-start justify-between gap-4">
+                  {/* Top Bar: Title, Provider, Duration */}
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <div className="text-xs text-slate-500">
-                        {pkg.providerType} · {pkg.durationLabel} · Ex-{pkg.startingCity}
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
+                          {pkg.durationLabel}
+                        </span>
+                        <span className="text-xs text-stone-500 font-medium">
+                          {pkg.providerType} · Ex-{pkg.startingCity}
+                        </span>
                       </div>
-                      <h3 className="text-xl font-bold text-slate-900 mt-1">{pkg.packageTitle}</h3>
-                      <p className="text-xs font-medium text-slate-700 mt-0.5">
-                        Provider: {pkg.providerName} · Last checked {pkg.lastChecked}
+                      <h3 className="text-lg sm:text-xl font-bold text-slate-900 font-serif-display mt-1">
+                        {pkg.packageTitle}
+                      </h3>
+                      <p className="text-xs text-stone-600 mt-0.5">
+                        Provided by <strong className="text-slate-800">{pkg.providerName}</strong> · Verified Tariff
                       </p>
                     </div>
-                  </div>
 
-                  {/* Inclusions & Exclusions */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100 text-xs">
-                    <div>
-                      <span className="font-bold text-emerald-800 block mb-1.5">
-                        Included Services:
+                    {/* Quick Price on mobile */}
+                    <div className="lg:hidden text-right">
+                      <span className="text-[11px] text-stone-500 block">From</span>
+                      <span className="text-lg font-bold text-[#0D9488] font-mono-num">
+                        ₹{pkg.pricePerAdult.toLocaleString('en-IN')}<span className="text-xs text-stone-500 font-normal">/adult</span>
                       </span>
-                      <ul className="space-y-1 text-slate-700">
-                        {pkg.inclusions.map((inc) => (
-                          <li key={inc} className="flex items-start gap-1.5">
-                            <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" />
-                            <span>{inc}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <span className="font-bold text-rose-800 block mb-1.5">
-                        Excluded / Extra Conditions:
-                      </span>
-                      <ul className="space-y-1 text-slate-600">
-                        {pkg.exclusions.map((exc) => (
-                          <li key={exc} className="flex items-start gap-1.5">
-                            <X className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
-                            <span>{exc}</span>
-                          </li>
-                        ))}
-                      </ul>
                     </div>
                   </div>
 
-                  {/* Hotel, Transport, Darshan & Cancellation Terms */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
-                    <div>
-                      <strong>Hotel Category:</strong> {pkg.hotelCategory}
-                    </div>
-                    <div>
-                      <strong>Transport Details:</strong> {pkg.transportDetails}
-                    </div>
-                    <div className="sm:col-span-2">
-                      <strong>Darshan Arrangement Policy:</strong>{' '}
-                      <span className={pkg.darshanConfirmedInTerms ? 'text-emerald-800' : 'text-amber-800'}>
-                        {pkg.darshanDetails}
-                      </span>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <strong>Cancellation / Refund Terms:</strong> {pkg.cancellationTerms}
-                    </div>
-                    <div>
-                      <strong>Verified Public Enquiry Phone:</strong>{' '}
-                      {pkg.publicContactPhone ? (
-                        <span className="font-mono-num font-semibold text-slate-900">
-                          {pkg.publicContactPhone} (Official Toll-Free)
+                  {/* Prioritized Key Highlights (3 concise tags) */}
+                  <div className="space-y-1.5 pt-2 border-t border-stone-100">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 block">
+                      Package Highlights
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {pkg.inclusions.slice(0, 3).map((inc) => (
+                        <span
+                          key={inc}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-teal-50/80 border border-teal-200/60 text-slate-800 text-xs font-medium"
+                        >
+                          <Check className="w-3.5 h-3.5 text-[#0D9488] shrink-0" />
+                          <span>{inc}</span>
                         </span>
-                      ) : (
-                        'Not publicly verified'
-                      )}
+                      ))}
                     </div>
-                    <div>
-                      <strong>Source URL:</strong>{' '}
-                      <a
-                        href={pkg.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline text-[#0D4A42]"
-                      >
-                        {pkg.sourceUrl}
-                      </a>
+                  </div>
+
+                  {/* Key Details: Darshan & Hotel category */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-stone-600 pt-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-stone-400 font-medium">Hotel:</span>
+                      <span className="font-semibold text-slate-800">{pkg.hotelCategory}</span>
                     </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-stone-400 font-medium">Darshan:</span>
+                      <span className={`font-semibold ${pkg.darshanConfirmedInTerms ? 'text-emerald-700' : 'text-amber-700'}`}>
+                        {pkg.darshanConfirmedInTerms ? 'Official Quota Terms' : 'Standard Queue Assistance'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Expandable Full Inclusions & Terms */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedPackageId((prev) => (prev === pkg.id ? null : pkg.id))}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0D9488] hover:underline cursor-pointer"
+                    >
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform duration-200 ${
+                          expandedPackageId === pkg.id ? 'rotate-180' : ''
+                        }`}
+                      />
+                      <span>
+                        {expandedPackageId === pkg.id
+                          ? 'Hide Detailed Inclusions & Terms'
+                          : 'Show Full Inclusions & Terms'}
+                      </span>
+                    </button>
+
+                    {expandedPackageId === pkg.id && (
+                      <div className="mt-3 p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-3 animate-in fade-in duration-150 text-xs">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <span className="font-bold text-emerald-800 block mb-1">All Inclusions:</span>
+                            <ul className="space-y-1 text-slate-700">
+                              {pkg.inclusions.map((item) => (
+                                <li key={item} className="flex items-start gap-1.5">
+                                  <Check className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <span className="font-bold text-rose-800 block mb-1">Exclusions / Conditions:</span>
+                            <ul className="space-y-1 text-slate-600">
+                              {pkg.exclusions.map((item) => (
+                                <li key={item} className="flex items-start gap-1.5">
+                                  <X className="w-3 h-3 text-rose-500 shrink-0 mt-0.5" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-stone-200 text-stone-600 space-y-1">
+                          <div>
+                            <strong>Cancellation Policy:</strong> {pkg.cancellationTerms}
+                          </div>
+                          <div>
+                            <strong>Transport Details:</strong> {pkg.transportDetails}
+                          </div>
+                          {pkg.publicContactPhone && (
+                            <div>
+                              <strong>Enquiry Helpline:</strong>{' '}
+                              <span className="font-mono-num font-semibold text-slate-900">
+                                {pkg.publicContactPhone}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -17,7 +17,12 @@ export type NavSection =
   | 'budget'
   | 'guide-dashboard'
   | 'traveller-dashboard'
-  | 'admin';
+  | 'admin'
+  | 'contact'
+  | 'privacy'
+  | 'terms'
+  | 'how-it-works'
+  | 'not-found';
 
 export interface DestinationItem {
   id: string;

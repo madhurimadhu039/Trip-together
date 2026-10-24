@@ -2,6 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
 import { GoogleGenAI, Type } from '@google/genai';
 import { db } from './db';
 import {
@@ -556,23 +557,153 @@ router.put('/reviews/:id/moderate', (req, res) => {
   res.json({ success: true, message: `Review status updated to ${status}` });
 });
 
-// 8. Contact & Support Endpoints
-router.post('/contact', (req, res) => {
-  const { name, email, subject, category, message } = req.body;
-  if (!name || !email || !message) {
-    return res.status(400).json({ error: 'Name, email, and message are required' });
-  }
-  const ticket = db.createContactTicket({
-    name,
-    email,
-    subject: subject || 'General Inquiry',
-    category: category || 'General Help',
-    message,
-  });
+// 8. Contact & Support Endpoints with Real Email Delivery
+router.get('/contact/status', (_req, res) => {
+  const recipient = process.env.CONTACT_RECIPIENT_EMAIL || 'madhurimadhu039@gmail.com';
+  const isSmtpConfigured = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  const isResendConfigured = Boolean(process.env.RESEND_API_KEY);
+
   res.json({
-    success: true,
-    message: `Thank you for contacting Trip Together! Your support ticket reference is ${ticket.ticketRef}. Our team replies within 4 business hours.`,
+    emailServiceConfigured: isSmtpConfigured || isResendConfigured,
+    serviceType: isSmtpConfigured ? 'SMTP' : isResendConfigured ? 'Resend' : 'Unconfigured',
+    recipientEmail: recipient,
+  });
+});
+
+// Cooldown map to prevent duplicate / spam submissions (IP + email)
+const contactSubmissionTimes = new Map<string, number>();
+
+router.post('/contact', async (req, res) => {
+  const { name, email, subject, category, message, botField } = req.body as {
+    name?: string;
+    email?: string;
+    subject?: string;
+    category?: string;
+    message?: string;
+    botField?: string;
+  };
+
+  // Bot honeypot check
+  if (botField) {
+    return res.status(400).json({ error: 'Spam submission detected.' });
+  }
+
+  // Server-side validation
+  const cleanName = (name || '').trim();
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanSubject = (subject || '').trim() || (category || 'Trip Planning Inquiry');
+  const cleanCategory = (category || 'General Help').trim();
+  const cleanMessage = (message || '').trim();
+
+  if (!cleanName || cleanName.length < 2) {
+    return res.status(400).json({ error: 'Please enter your full name (at least 2 characters).' });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
+  }
+
+  if (!cleanMessage || cleanMessage.length < 10) {
+    return res.status(400).json({ error: 'Message must be at least 10 characters long.' });
+  }
+
+  // Spam rate limiting: 5 second cooldown per email address
+  const now = Date.now();
+  const lastTime = contactSubmissionTimes.get(cleanEmail) || 0;
+  if (now - lastTime < 5000) {
+    return res.status(429).json({ error: 'Please wait a few seconds before submitting another inquiry.' });
+  }
+  contactSubmissionTimes.set(cleanEmail, now);
+
+  // Clean old cooldown entries every hour
+  if (contactSubmissionTimes.size > 200) {
+    contactSubmissionTimes.clear();
+  }
+
+  const ticket = db.createContactTicket({
+    name: cleanName,
+    email: cleanEmail,
+    subject: cleanSubject,
+    category: cleanCategory,
+    message: cleanMessage,
+  });
+
+  const recipientEmail = process.env.CONTACT_RECIPIENT_EMAIL || 'madhurimadhu039@gmail.com';
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
+  const smtpSecure = process.env.SMTP_SECURE === 'true';
+  const smtpFrom = process.env.SMTP_FROM || `"Trip Together Support" <${smtpUser || 'support@triptogether.com'}>`;
+
+  // Check if SMTP or Resend credentials are configured
+  if (smtpHost && smtpUser && smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+
+      const mailOptions = {
+        from: smtpFrom,
+        to: recipientEmail,
+        replyTo: `"${cleanName}" <${cleanEmail}>`,
+        subject: `[Trip Together] ${cleanCategory}: ${cleanSubject} (#${ticket.ticketRef})`,
+        text: `New contact inquiry received on Trip Together:\n\nReference: ${ticket.ticketRef}\nName: ${cleanName}\nEmail: ${cleanEmail}\nCategory: ${cleanCategory}\nSubject: ${cleanSubject}\nDate: ${new Date().toLocaleString('en-IN')}\n\nMessage:\n${cleanMessage}\n`,
+        html: `
+          <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; rounded: 16px;">
+            <div style="background: #0F1E36; color: white; padding: 16px 20px; border-radius: 12px; margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 20px; color: #14B8A6;">Trip Together Inquiry</h2>
+              <p style="margin: 4px 0 0; font-size: 12px; color: #cbd5e1;">Reference #${ticket.ticketRef}</p>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px;">
+              <tr><td style="padding: 6px 0; color: #64748b; width: 120px;"><strong>Name:</strong></td><td style="color: #0f172a;">${cleanName}</td></tr>
+              <tr><td style="padding: 6px 0; color: #64748b;"><strong>Email:</strong></td><td style="color: #0f172a;"><a href="mailto:${cleanEmail}">${cleanEmail}</a></td></tr>
+              <tr><td style="padding: 6px 0; color: #64748b;"><strong>Category:</strong></td><td style="color: #0f172a;">${cleanCategory}</td></tr>
+              <tr><td style="padding: 6px 0; color: #64748b;"><strong>Subject:</strong></td><td style="color: #0f172a;">${cleanSubject}</td></tr>
+            </table>
+            <div style="background: #f8fafc; border-left: 4px solid #0D9488; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px;">
+              <p style="margin: 0; white-space: pre-wrap; font-size: 14px; color: #1e293b;">${cleanMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+            </div>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Sent automatically via the Trip Together Contact Us portal.</p>
+          </div>
+        `,
+      };
+
+      await transporter.sendMail(mailOptions);
+
+      return res.json({
+        success: true,
+        emailDelivered: true,
+        ticket,
+        recipient: recipientEmail,
+        message: `Thank you for contacting Trip Together! Your message has been delivered to ${recipientEmail}. Support ticket reference: ${ticket.ticketRef}.`,
+      });
+    } catch (mailError: any) {
+      console.error('Email delivery failure:', mailError?.message);
+      return res.status(502).json({
+        success: false,
+        emailDelivered: false,
+        ticket,
+        error: `Inquiry ticket created (${ticket.ticketRef}), but email delivery could not be completed by SMTP: ${mailError?.message || 'Connection failed'}.`,
+        recipient: recipientEmail,
+      });
+    }
+  }
+
+  // If no SMTP service configured: per instructions, do not claim email was sent!
+  return res.status(503).json({
+    success: false,
+    emailDelivered: false,
     ticket,
+    recipient: recipientEmail,
+    error: `Inquiry recorded with ticket #${ticket.ticketRef}, but email delivery is not configured on the server. SMTP_HOST, SMTP_USER, and SMTP_PASS must be provided in .env to deliver messages to ${recipientEmail}.`,
   });
 });
 

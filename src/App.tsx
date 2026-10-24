@@ -94,6 +94,16 @@ import { AboutUsModal } from './components/AboutUsModal';
 import { WriteReviewModal } from './components/WriteReviewModal';
 import { TravellerDashboardSection } from './components/TravellerDashboardSection';
 import { AdminDashboardSection } from './components/AdminDashboardSection';
+import { ContactPage } from './components/ContactPage';
+import { PrivacyPolicyPage } from './components/PrivacyPolicyPage';
+import { TermsPage } from './components/TermsPage';
+import { HowItWorksPage } from './components/HowItWorksPage';
+import { NotFoundPage } from './components/NotFoundPage';
+import {
+  getSectionFromCurrentUrl,
+  getUrlForSection,
+  updatePageTitle,
+} from './utils/routing';
 import type { PopularDestination } from './data/popularDestinations';
 
 /**
@@ -125,6 +135,7 @@ interface AuthUser {
   id: string;
   email: string;
   name: string;
+  avatar?: string;
   role?: 'traveler' | 'guide' | 'admin';
 }
 
@@ -219,7 +230,7 @@ const DEFAULT_PROVIDER_ADAPTERS: ProviderAdapterStatus[] = [
 ];
 
 export default function App() {
-  const [activeSection, setActiveSection] = useState<NavSection>('dashboard');
+  const [activeSection, setActiveSection] = useState<NavSection>(() => getSectionFromCurrentUrl());
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [familyDropdownOpen, setFamilyDropdownOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -227,6 +238,13 @@ export default function App() {
   const [destinationCategoryFilter, setDestinationCategoryFilter] = useState<string>('All');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+  // See More / Show Less state
+  const [showAllDestinations, setShowAllDestinations] = useState(false);
+  const [showAllPackages, setShowAllPackages] = useState(false);
+  const [showAllGuides, setShowAllGuides] = useState(false);
+  const DESTINATIONS_INITIAL_COUNT = 8;
+  const PACKAGES_INITIAL_COUNT = 3;
+  const GUIDES_INITIAL_COUNT = 3;
 
   // Platform Data State
   const [destinations, setDestinations] = useState<DestinationItem[]>(SEED_DESTINATIONS);
@@ -522,12 +540,25 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const openAuthPrompt = (targetSection?: NavSection) => {
+  useEffect(() => {
+    const handlePopState = () => {
+      const section = getSectionFromCurrentUrl();
+      setActiveSection(section);
+      updatePageTitle(section);
+    };
+    window.addEventListener('popstate', handlePopState);
+    updatePageTitle(activeSection);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const openAuthPrompt = (mode: 'signin' | 'signup' = 'signin', targetSection?: NavSection) => {
+    setAuthMode(mode);
     if (targetSection) {
       setPendingSection(targetSection);
     }
     setFamilyDropdownOpen(false);
     setMobileMenuOpen(false);
+    setProfileMenuOpen(false);
     setAuthError(null);
     setAuthModalOpen(true);
   };
@@ -536,6 +567,12 @@ export default function App() {
     setActiveSection(section);
     setFamilyDropdownOpen(false);
     setMobileMenuOpen(false);
+    setProfileMenuOpen(false);
+    const targetUrl = getUrlForSection(section);
+    if (typeof window !== 'undefined' && window.location.pathname !== targetUrl) {
+      window.history.pushState({ section }, '', targetUrl);
+    }
+    updatePageTitle(section);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -1025,16 +1062,24 @@ export default function App() {
 
             <button
               type="button"
-              onClick={() => setAboutUsModalOpen(true)}
-              className="hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer"
+              onClick={() => navigateAndScroll('how-it-works')}
+              className={`hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer ${
+                activeSection === 'how-it-works'
+                  ? 'text-[#0D9488] font-bold underline underline-offset-8 decoration-2'
+                  : ''
+              }`}
             >
-              About Us
+              How It Works
             </button>
 
             <button
               type="button"
-              onClick={() => setContactModalOpen(true)}
-              className="hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer"
+              onClick={() => navigateAndScroll('contact')}
+              className={`hover:text-[#0D9488] transition-colors whitespace-nowrap cursor-pointer ${
+                activeSection === 'contact'
+                  ? 'text-[#0D9488] font-bold underline underline-offset-8 decoration-2'
+                  : ''
+              }`}
             >
               Contact
             </button>
@@ -1052,222 +1097,351 @@ export default function App() {
               <span>Plan a Trip</span>
             </button>
 
-            {/* Auth / Profile Menu */}
-            {authUser ? (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setProfileMenuOpen((prev) => !prev)}
-                  className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-[#0F1E36] rounded-xl hover:bg-[#1E3A8A] transition-colors whitespace-nowrap cursor-pointer shadow-xs"
-                >
-                  <UserCircle className="w-4 h-4 text-teal-300 shrink-0" />
-                  <span className="max-w-[120px] truncate">{authUser.name}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-stone-300" />
-                </button>
-
-                {profileMenuOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setProfileMenuOpen(false)}
-                    />
-                    <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-stone-200/90 py-3 px-4 z-50 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
-                      <div className="flex items-center gap-2.5 pb-2 border-b border-stone-100">
-                        <div className="w-8 h-8 rounded-full bg-teal-100 text-[#0D9488] flex items-center justify-center font-bold text-xs shrink-0">
-                          {authUser.name.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold text-slate-900 truncate">
-                            {authUser.name}
-                          </div>
-                          <div className="text-[11px] text-stone-500 truncate">{authUser.email}</div>
-                          <span className="inline-block mt-0.5 text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-1.5 py-0.2 rounded">
-                            {authUser.role || 'Traveler'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProfileMenuOpen(false);
-                          navigateAndScroll('traveller-dashboard');
-                        }}
-                        className="w-full text-left text-xs font-medium text-slate-700 hover:text-[#0D9488] py-1 flex items-center gap-2 cursor-pointer"
-                      >
-                        <UserCircle className="w-3.5 h-3.5 text-[#0D9488]" />
-                        <span>Traveller Dashboard</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProfileMenuOpen(false);
-                          navigateAndScroll('budget');
-                        }}
-                        className="w-full text-left text-xs font-medium text-slate-700 hover:text-[#0D9488] py-1 flex items-center gap-2 cursor-pointer"
-                      >
-                        <Wallet className="w-3.5 h-3.5 text-[#0D9488]" />
-                        <span>My Bookings & Ledger</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProfileMenuOpen(false);
-                          setGuideDashboardModalOpen(true);
-                        }}
-                        className="w-full text-left text-xs font-medium text-slate-700 hover:text-[#0D9488] py-1 flex items-center gap-2 cursor-pointer"
-                      >
-                        <Award className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Guide Portal</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProfileMenuOpen(false);
-                          navigateAndScroll('admin');
-                        }}
-                        className="w-full text-left text-xs font-medium text-purple-700 hover:text-purple-900 py-1 flex items-center gap-2 cursor-pointer"
-                      >
-                        <ShieldAlert className="w-3.5 h-3.5 text-purple-600" />
-                        <span>Admin Console</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleSignOut}
-                        className="w-full text-left text-xs font-semibold text-rose-600 hover:text-rose-700 pt-2 border-t border-stone-100 flex items-center gap-2 cursor-pointer"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>Sign Out</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
+            {/* Unified Circular Profile Avatar Menu (Requirement 4) */}
+            <div className="relative">
               <button
                 type="button"
-                onClick={() => openAuthPrompt()}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#0F1E36] rounded-xl hover:bg-[#1E3A8A] transition-colors whitespace-nowrap cursor-pointer shadow-xs"
+                onClick={() => setProfileMenuOpen((prev) => !prev)}
+                aria-label={authUser ? `Account menu for ${authUser.name}` : 'Account menu - Sign in or register'}
+                aria-expanded={profileMenuOpen}
+                className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm hover:shadow-md shrink-0 border ${
+                  authUser
+                    ? 'bg-gradient-to-br from-[#0D9488] to-[#0F1E36] text-white border-white/40 hover:ring-2 hover:ring-[#0D9488] hover:ring-offset-2'
+                    : 'bg-stone-100 hover:bg-stone-200 border-stone-300 text-stone-700 hover:border-[#0D9488] hover:text-[#0D9488]'
+                }`}
               >
-                <UserCircle className="w-4 h-4 text-teal-300 shrink-0" />
-                <span>Sign In</span>
+                {authUser ? (
+                  authUser.avatar ? (
+                    <img
+                      src={authUser.avatar}
+                      alt={authUser.name}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="font-bold text-xs">
+                      {authUser.name.slice(0, 2).toUpperCase()}
+                    </span>
+                  )
+                ) : (
+                  <UserCircle className="w-6 h-6 text-stone-600 hover:text-[#0D9488]" />
+                )}
+                {authUser && (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 border-2 border-white rounded-full" />
+                )}
               </button>
-            )}
 
-            {/* Mobile Hamburger Toggle */}
+              {profileMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setProfileMenuOpen(false)}
+                    aria-hidden="true"
+                  />
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-stone-200/90 py-3 px-4 z-50 space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                    {authUser ? (
+                      <>
+                        <div className="flex items-center gap-3 pb-3 border-b border-stone-100">
+                          <div className="w-10 h-10 rounded-full bg-teal-100 text-[#0D9488] flex items-center justify-center font-bold text-sm shrink-0">
+                            {authUser.avatar ? (
+                              <img
+                                src={authUser.avatar}
+                                alt={authUser.name}
+                                className="w-full h-full rounded-full object-cover"
+                              />
+                            ) : (
+                              authUser.name.slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-bold text-slate-900 truncate">
+                              {authUser.name}
+                            </div>
+                            <div className="text-xs text-stone-500 truncate">{authUser.email}</div>
+                            <span className="inline-block mt-0.5 text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                              {authUser.role || 'Traveler'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfileMenuOpen(false);
+                              navigateAndScroll('traveller-dashboard');
+                            }}
+                            className="w-full text-left text-xs font-semibold text-slate-700 hover:text-[#0D9488] hover:bg-stone-50 px-2 py-2 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <UserCircle className="w-4 h-4 text-[#0D9488]" />
+                            <span>Traveller Dashboard</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfileMenuOpen(false);
+                              navigateAndScroll('budget');
+                            }}
+                            className="w-full text-left text-xs font-semibold text-slate-700 hover:text-[#0D9488] hover:bg-stone-50 px-2 py-2 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Wallet className="w-4 h-4 text-[#0D9488]" />
+                            <span>My Bookings & Budget</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfileMenuOpen(false);
+                              setGuideDashboardModalOpen(true);
+                            }}
+                            className="w-full text-left text-xs font-semibold text-slate-700 hover:text-[#0D9488] hover:bg-stone-50 px-2 py-2 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Award className="w-4 h-4 text-amber-500" />
+                            <span>Local Guide Portal</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfileMenuOpen(false);
+                              navigateAndScroll('admin');
+                            }}
+                            className="w-full text-left text-xs font-semibold text-purple-700 hover:text-purple-900 hover:bg-purple-50 px-2 py-2 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <ShieldAlert className="w-4 h-4 text-purple-600" />
+                            <span>Admin Console</span>
+                          </button>
+                        </div>
+
+                        <div className="pt-2 border-t border-stone-100">
+                          <button
+                            type="button"
+                            onClick={handleSignOut}
+                            className="w-full text-left text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
+                          >
+                            <LogOut className="w-4 h-4" />
+                            <span>Sign Out</span>
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="pb-3 border-b border-stone-100">
+                          <div className="flex items-center gap-2.5 mb-1.5">
+                            <div className="w-9 h-9 rounded-full bg-stone-100 text-stone-600 flex items-center justify-center">
+                              <UserCircle className="w-6 h-6 text-stone-500" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-slate-900">Guest Traveler</div>
+                              <div className="text-[11px] text-stone-500">Sign in to save trips & view bookings</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfileMenuOpen(false);
+                              openAuthPrompt('signin');
+                            }}
+                            className="w-full py-2.5 px-4 text-xs font-bold text-white bg-[#0F1E36] hover:bg-[#1E3A8A] rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <UserCircle className="w-4 h-4 text-teal-300" />
+                            <span>Sign In to Account</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfileMenuOpen(false);
+                              openAuthPrompt('signup');
+                            }}
+                            className="w-full py-2.5 px-4 text-xs font-bold text-[#0D9488] bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <Sparkles className="w-4 h-4 text-[#0D9488]" />
+                            <span>Create New Account</span>
+                          </button>
+                        </div>
+
+                        <div className="pt-2 border-t border-stone-100 text-[11px] text-stone-500 flex justify-between items-center">
+                          <span>Local Guide?</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfileMenuOpen(false);
+                              setGuideRegisterModalOpen(true);
+                            }}
+                            className="text-[#0D9488] font-bold hover:underline cursor-pointer"
+                          >
+                            Join as Guide →
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Mobile Hamburger Toggle (Requirement 7) — clearly visible with comfortable touch target */}
             <button
               type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
-              aria-label="Toggle mobile menu"
-              className="lg:hidden p-2 rounded-xl bg-stone-100 text-slate-800 hover:bg-stone-200 transition-colors cursor-pointer"
+              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileMenuOpen}
+              className="lg:hidden w-11 h-11 rounded-xl bg-[#0F1E36] text-white hover:bg-[#1E3A8A] flex items-center justify-center transition-colors cursor-pointer shadow-sm shrink-0 border border-white/10 active:scale-95"
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? (
+                <X className="w-5 h-5 text-teal-300" />
+              ) : (
+                <Menu className="w-5 h-5 text-teal-300" />
+              )}
             </button>
           </div>
         </div>
 
-        {/* Mobile Navigation Drawer */}
+        {/* Functional Mobile Navigation Drawer (Requirement 7) */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-stone-200 bg-white px-4 py-4 space-y-2 animate-in slide-in-from-top-4 duration-200 shadow-xl">
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('dashboard')}
-              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
-            >
-              <span>Home</span>
-              <ChevronRight className="w-4 h-4 text-stone-400" />
-            </button>
+          <div className="fixed inset-0 z-50 lg:hidden">
+            {/* Backdrop overlay — clicking closes the drawer */}
+            <div
+              className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
 
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('destinations')}
-              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
-            >
-              <span>Explore Destinations</span>
-              <ChevronRight className="w-4 h-4 text-stone-400" />
-            </button>
+            {/* Sliding Drawer Panel */}
+            <div className="fixed top-0 right-0 bottom-0 w-full max-w-sm bg-white shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200 overflow-y-auto">
+              {/* Drawer Top Header */}
+              <div className="p-4 border-b border-stone-200 flex items-center justify-between bg-stone-50">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0F1E36] to-[#0D9488] flex items-center justify-center text-white shadow-xs">
+                    <Compass className="w-4 h-4 text-teal-300" />
+                  </div>
+                  <span className="font-bold text-slate-900 text-sm font-serif-display">
+                    TripTogether
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Close navigation menu"
+                  className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-stone-200 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('packages')}
-              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
-            >
-              <span>Tour Packages</span>
-              <ChevronRight className="w-4 h-4 text-stone-400" />
-            </button>
+              {/* Account Section in Mobile Drawer */}
+              <div className="p-4 border-b border-stone-100 bg-[#FAF9F6]">
+                {authUser ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-teal-100 text-[#0D9488] flex items-center justify-center font-bold text-sm shrink-0">
+                        {authUser.avatar ? (
+                          <img
+                            src={authUser.avatar}
+                            alt={authUser.name}
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                        ) : (
+                          authUser.name.slice(0, 2).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-900 truncate">
+                          {authUser.name}
+                        </div>
+                        <div className="text-[11px] text-stone-500 truncate">{authUser.email}</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSignOut();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="text-xs font-bold text-rose-600 hover:underline cursor-pointer shrink-0 ml-2"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="text-[11px] text-stone-500 font-medium">
+                      Sign in to manage bookings and family trips
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          openAuthPrompt('signin');
+                        }}
+                        className="flex-1 py-2 px-3 text-xs font-bold text-white bg-[#0F1E36] rounded-xl text-center cursor-pointer shadow-xs hover:bg-[#1E3A8A]"
+                      >
+                        Sign In
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          openAuthPrompt('signup');
+                        }}
+                        className="flex-1 py-2 px-3 text-xs font-bold text-[#0D9488] bg-teal-50 border border-teal-200 rounded-xl text-center cursor-pointer hover:bg-teal-100"
+                      >
+                        Sign Up
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('guides')}
-              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
-            >
-              <span>Local Guides</span>
-              <ChevronRight className="w-4 h-4 text-stone-400" />
-            </button>
+              {/* Navigation links in Mobile Drawer */}
+              <nav className="p-4 space-y-1 flex-1">
+                {[
+                  { id: 'dashboard', label: 'Home' },
+                  { id: 'destinations', label: 'Explore Destinations' },
+                  { id: 'packages', label: 'Tour Packages' },
+                  { id: 'guides', label: 'Local Guides' },
+                  { id: 'builder', label: 'Trip Planner' },
+                  { id: 'transport', label: 'Find Transport' },
+                  { id: 'hotels', label: 'Hotels & Rooms' },
+                  { id: 'how-it-works', label: 'How It Works' },
+                  { id: 'contact', label: 'Contact Us' },
+                  { id: 'budget', label: 'My Bookings & Budget' },
+                  { id: 'privacy', label: 'Privacy Policy' },
+                  { id: 'terms', label: 'Terms & Conditions' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => navigateAndScroll(item.id as NavSection)}
+                    className={`w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl flex items-center justify-between transition-colors cursor-pointer ${
+                      activeSection === item.id
+                        ? 'bg-teal-50 text-[#0D9488] font-bold'
+                        : 'text-slate-700 hover:bg-stone-50'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    <ChevronRight className="w-4 h-4 text-stone-400" />
+                  </button>
+                ))}
+              </nav>
 
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('builder')}
-              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
-            >
-              <span>Trip Planner</span>
-              <ChevronRight className="w-4 h-4 text-stone-400" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('transport')}
-              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
-            >
-              <span>Find Transport</span>
-              <ChevronRight className="w-4 h-4 text-stone-400" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('hotels')}
-              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
-            >
-              <span>Hotels & Rooms</span>
-              <ChevronRight className="w-4 h-4 text-stone-400" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('budget')}
-              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
-            >
-              <span>My Bookings & Budget</span>
-              <ChevronRight className="w-4 h-4 text-stone-400" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                setAboutUsModalOpen(true);
-              }}
-              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
-            >
-              <span>About Us</span>
-              <ChevronRight className="w-4 h-4 text-stone-400" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                setContactModalOpen(true);
-              }}
-              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-stone-50 rounded-lg flex items-center justify-between"
-            >
-              <span>Contact Support</span>
-              <ChevronRight className="w-4 h-4 text-stone-400" />
-            </button>
+              {/* Mobile Drawer Footer CTA */}
+              <div className="p-4 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => navigateAndScroll('builder')}
+                  className="w-full py-3 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-teal-200" />
+                  <span>Plan a Custom Trip</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </header>
@@ -1430,15 +1604,13 @@ export default function App() {
                     </button>
                   </div>
                 </div>
-              </section>
-
-              {/* POPULAR DESTINATIONS SECTION */}
+                  {/* POPULAR DESTINATIONS SECTION */}
               <section id="destinations-section" className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                   <div>
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0D9488] text-xs font-semibold mb-2">
                       <Compass className="w-3.5 h-3.5" />
-                      <span>Curated India & Beyond</span>
+                      <span>Curated India &amp; Beyond</span>
                     </div>
                     <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif-display">
                       Popular Destinations
@@ -1454,7 +1626,7 @@ export default function App() {
                       <button
                         key={cat}
                         type="button"
-                        onClick={() => setDestinationCategoryFilter(cat)}
+                        onClick={() => { setDestinationCategoryFilter(cat); setShowAllDestinations(false); }}
                         className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
                           destinationCategoryFilter === cat
                             ? 'bg-[#0F1E36] text-white shadow-xs'
@@ -1468,83 +1640,121 @@ export default function App() {
                 </div>
 
                 {/* Destinations Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {filteredDestinations.map((dest) => (
-                    <div
-                      key={dest.id}
-                      className="group bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
-                    >
-                      <div className="relative h-56 overflow-hidden">
-                        <img
-                          src={dest.image}
-                          alt={dest.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
+                {(() => {
+                  const visibleDests = showAllDestinations
+                    ? filteredDestinations
+                    : filteredDestinations.slice(0, DESTINATIONS_INITIAL_COUNT);
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {visibleDests.map((dest) => (
+                          <div
+                            key={dest.id}
+                            className="group bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+                          >
+                            <div className="relative h-56 overflow-hidden">
+                              <img
+                                src={dest.image}
+                                alt={dest.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
 
-                        {/* Category Badge */}
-                        <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-slate-900/70 backdrop-blur-xs text-white text-[11px] font-semibold">
-                          {dest.category}
-                        </span>
+                              <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-slate-900/70 backdrop-blur-xs text-white text-[11px] font-semibold">
+                                {dest.category}
+                              </span>
 
-                        {/* Wishlist Heart Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleToggleWishlistDest(dest.name)}
-                          aria-label={`Save ${dest.name} to wishlist`}
-                          className="absolute top-3 right-3 p-1.5 rounded-full bg-white/80 backdrop-blur-xs hover:bg-white text-rose-500 shadow-xs transition-colors cursor-pointer"
-                        >
-                          <Heart
-                            className={`w-4 h-4 ${
-                              wishlistDestinations.includes(dest.name)
-                                ? 'fill-rose-500 text-rose-500'
-                                : 'text-slate-400'
-                            }`}
-                          />
-                        </button>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleWishlistDest(dest.name)}
+                                aria-label={`Save ${dest.name} to wishlist`}
+                                className="absolute top-3 right-3 p-1.5 rounded-full bg-white/80 backdrop-blur-xs hover:bg-white text-rose-500 shadow-xs transition-colors cursor-pointer"
+                              >
+                                <Heart
+                                  className={`w-4 h-4 ${
+                                    wishlistDestinations.includes(dest.name)
+                                      ? 'fill-rose-500 text-rose-500'
+                                      : 'text-slate-400'
+                                  }`}
+                                />
+                              </button>
 
-                        <div className="absolute bottom-3 left-3.5 right-3.5 text-white">
-                          <h3 className="text-lg font-bold font-serif-display drop-shadow-sm">
-                            {dest.name}
-                          </h3>
-                          <p className="text-xs text-stone-200 flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-teal-300 shrink-0" />
-                            <span className="truncate">{dest.state}, {dest.country}</span>
-                          </p>
-                        </div>
+                              <div className="absolute bottom-3 left-3.5 right-3.5 text-white">
+                                <h3 className="text-lg font-bold font-serif-display drop-shadow-sm">
+                                  {dest.name}
+                                </h3>
+                                <p className="text-xs text-stone-200 flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 text-teal-300 shrink-0" />
+                                  <span className="truncate">{dest.state}, {dest.country}</span>
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                              <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                                {dest.description}
+                              </p>
+
+                              <div className="space-y-2 pt-2 border-t border-stone-100 text-xs">
+                                <div className="flex justify-between text-stone-500">
+                                  <span>Best Season:</span>
+                                  <span className="font-semibold text-slate-800">{dest.bestSeason}</span>
+                                </div>
+                                <div className="flex justify-between text-stone-500">
+                                  <span>Approx Budget:</span>
+                                  <span className="font-semibold text-[#0D9488] font-mono-num">{dest.approxNightBudget}/nt</span>
+                                </div>
+                              </div>
+
+                              <div className="pt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveDestinationModal(dest)}
+                                  className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-stone-100 hover:bg-[#0F1E36] text-slate-800 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  <span>Explore Destination</span>
+                                  <ArrowRight className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
 
-                      <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                        <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
-                          {dest.description}
-                        </p>
-
-                        <div className="space-y-2 pt-2 border-t border-stone-100 text-xs">
-                          <div className="flex justify-between text-stone-500">
-                            <span>Best Season:</span>
-                            <span className="font-semibold text-slate-800">{dest.bestSeason}</span>
-                          </div>
-                          <div className="flex justify-between text-stone-500">
-                            <span>Approx Budget:</span>
-                            <span className="font-semibold text-[#0D9488] font-mono-num">{dest.approxNightBudget}/nt</span>
-                          </div>
-                        </div>
-
-                        <div className="pt-2">
+                      {/* See More / Show Less / View All */}
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                        {filteredDestinations.length > DESTINATIONS_INITIAL_COUNT && !showAllDestinations && (
                           <button
                             type="button"
-                            onClick={() => setActiveDestinationModal(dest)}
-                            className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-stone-100 hover:bg-[#0F1E36] text-slate-800 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                            onClick={() => setShowAllDestinations(true)}
+                            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-slate-800 text-xs font-bold transition-colors cursor-pointer shadow-xs"
                           >
-                            <span>Explore Destination</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
+                            <ChevronDown className="w-4 h-4" />
+                            See More ({filteredDestinations.length - DESTINATIONS_INITIAL_COUNT} more)
                           </button>
-                        </div>
+                        )}
+                        {showAllDestinations && filteredDestinations.length > DESTINATIONS_INITIAL_COUNT && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllDestinations(false)}
+                            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-slate-800 text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                          >
+                            <ChevronDown className="w-4 h-4 rotate-180" />
+                            Show Less
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => navigateAndScroll('destinations')}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0D9488] hover:underline cursor-pointer"
+                        >
+                          View All Destinations <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                    </>
+                  );
+                })()}
+              </section>            </section>
 
               {/* FEATURED TOUR PACKAGES SECTION */}
               <section id="packages-section" className="space-y-6">
@@ -1573,7 +1783,7 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {packages.slice(0, 3).map((pkg) => (
+                  {(showAllPackages ? packages : packages.slice(0, PACKAGES_INITIAL_COUNT)).map((pkg) => (
                     <div
                       key={pkg.id}
                       className="bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
@@ -1659,15 +1869,75 @@ export default function App() {
                     </div>
                   ))}
                 </div>
+
+                {/* See More / Show Less / View All for Tour Packages (Requirement 3) */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                  {packages.length > PACKAGES_INITIAL_COUNT && !showAllPackages && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllPackages(true)}
+                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-slate-800 text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    >
+                      <ChevronDown className="w-4 h-4 text-[#0D9488]" />
+                      <span>See More Packages ({packages.length - PACKAGES_INITIAL_COUNT} more)</span>
+                    </button>
+                  )}
+                  {showAllPackages && packages.length > PACKAGES_INITIAL_COUNT && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllPackages(false)}
+                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-slate-800 text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    >
+                      <ChevronDown className="w-4 h-4 rotate-180 text-[#0D9488]" />
+                      <span>Show Less</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => navigateAndScroll('packages')}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#0D9488] hover:underline cursor-pointer"
+                  >
+                    <span>View All Tour Packages</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </section>
 
-              {/* LOCAL TOUR GUIDES SECTION (REPLACES TIRUPATI & KAKINADA CORRIDOR GUIDES) */}
-              <LocalGuidesSection
-                guides={guides}
-                onSelectGuide={(g) => setActiveGuideProfileModal(g)}
-                onContactGuide={(g) => setActiveGuideContactModal(g)}
-                onRegisterAsGuide={() => setGuideRegisterModalOpen(true)}
-              />
+              {/* LOCAL TOUR GUIDES SECTION — initial 3, with See More */}
+              <section className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mb-2">
+                      <Award className="w-3.5 h-3.5" />
+                      <span>Certified Professionals</span>
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif-display">Local Guides</h2>
+                    <p className="text-xs sm:text-sm text-stone-600 max-w-xl mt-1">Connect with certified local guides who provide authentic cultural narration and senior citizen care.</p>
+                  </div>
+                  <button type="button" onClick={() => navigateAndScroll('guides')} className="text-xs font-bold text-[#0D9488] hover:underline flex items-center gap-1 cursor-pointer shrink-0">
+                    <span>View All Guides</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <LocalGuidesSection
+                  guides={showAllGuides ? guides : guides.slice(0, GUIDES_INITIAL_COUNT)}
+                  onSelectGuide={(g) => setActiveGuideProfileModal(g)}
+                  onContactGuide={(g) => setActiveGuideContactModal(g)}
+                  onRegisterAsGuide={() => setGuideRegisterModalOpen(true)}
+                />
+                {guides.length > GUIDES_INITIAL_COUNT && (
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowAllGuides((prev) => !prev)}
+                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-slate-800 text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    >
+                      <ChevronDown className={`w-4 h-4 transition-transform ${showAllGuides ? 'rotate-180' : ''}`} />
+                      {showAllGuides ? 'Show Less' : `See More Guides (${guides.length - GUIDES_INITIAL_COUNT} more)`}
+                    </button>
+                  </div>
+                )}
+              </section>
 
               {/* HOW TRIP TOGETHER WORKS */}
               <section className="bg-white rounded-3xl border border-stone-200/90 p-8 sm:p-12 shadow-xs space-y-8">
@@ -2242,37 +2512,97 @@ export default function App() {
             />
           </div>
         )}
+        {/* CONTACT US PAGE */}
+        {activeSection === 'contact' && (
+          <ContactPage
+            defaultEmail={authUser?.email}
+            defaultName={authUser?.name}
+            onNavigateHome={() => navigateAndScroll('dashboard')}
+          />
+        )}
+
+        {/* PRIVACY POLICY PAGE */}
+        {activeSection === 'privacy' && (
+          <PrivacyPolicyPage
+            onNavigateHome={() => navigateAndScroll('dashboard')}
+            onContactUs={() => navigateAndScroll('contact')}
+          />
+        )}
+
+        {/* TERMS & CONDITIONS PAGE */}
+        {activeSection === 'terms' && (
+          <TermsPage
+            onNavigateHome={() => navigateAndScroll('dashboard')}
+            onContactUs={() => navigateAndScroll('contact')}
+          />
+        )}
+
+        {/* HOW IT WORKS PAGE */}
+        {activeSection === 'how-it-works' && (
+          <HowItWorksPage
+            onNavigateHome={() => navigateAndScroll('dashboard')}
+            onExploreDestinations={() => navigateAndScroll('destinations')}
+            onPlanTrip={() => navigateAndScroll('builder')}
+            onViewPackages={() => navigateAndScroll('packages')}
+            onFindGuides={() => navigateAndScroll('guides')}
+          />
+        )}
+
+        {/* 404 NOT FOUND PAGE (Requirement 6 D) */}
+        {activeSection === 'not-found' && (
+          <NotFoundPage
+            onNavigateHome={() => navigateAndScroll('dashboard')}
+            onExploreDestinations={() => navigateAndScroll('destinations')}
+            onViewPackages={() => navigateAndScroll('packages')}
+            onContactUs={() => navigateAndScroll('contact')}
+          />
+        )}
       </main>
 
-      {/* FOOTER */}
-      <footer className="bg-[#0F1E36] text-stone-300 pt-16 pb-10 px-6 lg:px-10 border-t border-stone-800">
-        <div className="max-w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 pb-12 border-b border-white/10">
-          {/* Brand & Mission Column */}
-          <div className="lg:col-span-4 space-y-3.5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-400 to-[#0D9488] flex items-center justify-center text-[#0F1E36] font-bold shadow-md">
-                <Compass className="w-5 h-5" />
+      {/* PROFESSIONAL FOOTER (Requirement 5) */}
+      <footer className="bg-[#0F1E36] text-stone-300 pt-16 pb-10 px-4 sm:px-6 lg:px-10 border-t border-stone-800">
+        <div className="max-w-[1280px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10 pb-12 border-b border-white/10">
+          {/* Brand Column (Requirement 1 & 5) */}
+          <div className="sm:col-span-2 lg:col-span-4 space-y-4">
+            <a
+              href="#top"
+              onClick={(e) => {
+                e.preventDefault();
+                navigateAndScroll('dashboard');
+              }}
+              className="flex items-center gap-3 group shrink-0 w-fit"
+            >
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0F1E36] via-[#1E3A8A] to-[#0D9488] flex items-center justify-center shadow-md border border-white/20 group-hover:scale-105 transition-transform shrink-0">
+                <Compass className="w-6 h-6 text-teal-300" />
               </div>
-              <span className="text-xl font-bold font-serif-display text-white">TripTogether</span>
-            </div>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold tracking-tight text-white font-serif-display leading-none">
+                  TripTogether
+                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-400 mt-1">
+                  Travel Platform
+                </span>
+              </div>
+            </a>
             <p className="text-xs text-stone-300 max-w-sm leading-relaxed">
-              India's transparent collaborative travel platform. Discover verified destinations, compare live rail & road tariffs, book certified local guides, and travel together with total trust.
+              India's collaborative travel platform. Discover verified destinations, compare transparent rail and road tariffs, book certified local guides, and travel together with total trust.
             </p>
-            <div className="text-xs text-stone-400 space-y-1 pt-1 font-mono-num">
-              <div>Email: <a href="mailto:support@triptogether.com" className="text-teal-300 hover:underline">support@triptogether.com</a></div>
-              <div>Helpline: <span className="text-white">+91 1800-425-TRIP</span> (9AM–8PM IST)</div>
+            <div className="text-xs text-stone-400 space-y-1.5 pt-1 font-mono-num">
+              <div className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                <span>Support: <a href="mailto:madhurimadhu039@gmail.com" className="text-teal-300 hover:underline">madhurimadhu039@gmail.com</a></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                <span>Helpline: <span className="text-white">+91 1800-425-TRIP</span> (9AM–8PM IST)</span>
+              </div>
             </div>
           </div>
 
-          {/* Quick Navigation Links */}
-          <div className="lg:col-span-2 space-y-2.5">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Explore</h4>
+          {/* Explore Column */}
+          <div className="lg:col-span-3 space-y-3">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Explore</h3>
             <ul className="space-y-2 text-xs">
-              <li>
-                <button type="button" onClick={() => navigateAndScroll('dashboard')} className="hover:text-white transition-colors cursor-pointer">
-                  Home
-                </button>
-              </li>
               <li>
                 <button type="button" onClick={() => navigateAndScroll('destinations')} className="hover:text-white transition-colors cursor-pointer">
                   Destinations
@@ -2289,6 +2619,11 @@ export default function App() {
                 </button>
               </li>
               <li>
+                <button type="button" onClick={() => navigateAndScroll('how-it-works')} className="hover:text-white transition-colors cursor-pointer">
+                  How It Works
+                </button>
+              </li>
+              <li>
                 <button type="button" onClick={() => navigateAndScroll('builder')} className="hover:text-white transition-colors cursor-pointer">
                   Trip Planner
                 </button>
@@ -2296,49 +2631,44 @@ export default function App() {
             </ul>
           </div>
 
-          {/* Family & Services */}
-          <div className="lg:col-span-3 space-y-2.5">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Family Collaboration</h4>
+          {/* Support Column */}
+          <div className="lg:col-span-2 space-y-3">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Support</h3>
             <ul className="space-y-2 text-xs">
               <li>
-                <button type="button" onClick={() => navigateAndScroll('tracking')} className="hover:text-white transition-colors cursor-pointer">
-                  Live Route GPS
+                <button type="button" onClick={() => navigateAndScroll('contact')} className="hover:text-white transition-colors cursor-pointer">
+                  Contact Us
                 </button>
               </li>
               <li>
-                <button type="button" onClick={() => navigateAndScroll('chat')} className="hover:text-white transition-colors cursor-pointer">
-                  Private Family Chat
+                <button type="button" onClick={() => setAboutUsModalOpen(true)} className="hover:text-white transition-colors cursor-pointer">
+                  About Us
                 </button>
               </li>
               <li>
-                <button type="button" onClick={() => navigateAndScroll('checklist')} className="hover:text-white transition-colors cursor-pointer">
-                  Packing Checklist ({packingProgressPct}%)
+                <button type="button" onClick={() => setContactModalOpen(true)} className="hover:text-white transition-colors cursor-pointer">
+                  FAQs & Help Center
                 </button>
               </li>
               <li>
-                <button type="button" onClick={() => navigateAndScroll('budget')} className="hover:text-white transition-colors cursor-pointer">
-                  My Bookings & Ledger
-                </button>
-              </li>
-              <li>
-                <button type="button" onClick={() => setGuideRegisterModalOpen(true)} className="hover:text-white transition-colors cursor-pointer text-teal-300 font-semibold">
+                <button type="button" onClick={() => setGuideRegisterModalOpen(true)} className="text-teal-300 hover:text-white transition-colors cursor-pointer font-semibold">
                   Become a Local Guide →
                 </button>
               </li>
             </ul>
           </div>
 
-          {/* Legal & Portals */}
-          <div className="lg:col-span-3 space-y-2.5">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Policies & Portals</h4>
+          {/* Legal Column */}
+          <div className="lg:col-span-3 space-y-3">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Legal</h3>
             <ul className="space-y-2 text-xs">
               <li>
-                <button type="button" onClick={() => setPolicyModal('privacy')} className="hover:text-white transition-colors cursor-pointer">
+                <button type="button" onClick={() => navigateAndScroll('privacy')} className="hover:text-white transition-colors cursor-pointer">
                   Privacy Policy
                 </button>
               </li>
               <li>
-                <button type="button" onClick={() => setPolicyModal('terms')} className="hover:text-white transition-colors cursor-pointer">
+                <button type="button" onClick={() => navigateAndScroll('terms')} className="hover:text-white transition-colors cursor-pointer">
                   Terms & Conditions
                 </button>
               </li>
@@ -2347,32 +2677,23 @@ export default function App() {
                   Booking & Refund Policy
                 </button>
               </li>
-              <li>
-                <button type="button" onClick={() => setContactModalOpen(true)} className="hover:text-white transition-colors cursor-pointer">
-                  24/7 Help & Support
-                </button>
-              </li>
-              <li>
-                <button type="button" onClick={() => setAboutUsModalOpen(true)} className="hover:text-white transition-colors cursor-pointer">
-                  About Trip Together
-                </button>
-              </li>
             </ul>
           </div>
         </div>
 
+        {/* Bottom Bar: Copyright and Verified Portal Links */}
         <div className="max-w-[1280px] mx-auto pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-400">
           <div>
-            © 2026 TripTogether Travel Platform. All rights reserved.
+            © {new Date().getFullYear()} TripTogether Travel Platform. All rights reserved.
           </div>
           <div className="flex items-center gap-6">
-            <a href="https://ttdevasthanams.ap.gov.in/" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+            <a href="https://ttdevasthanams.ap.gov.in/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
               TTD Portal
             </a>
-            <a href="https://www.irctc.co.in/" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+            <a href="https://www.irctc.co.in/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
               IRCTC Rail
             </a>
-            <a href="https://www.apsrtconline.in/" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+            <a href="https://www.apsrtconline.in/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
               APSRTC Bus
             </a>
           </div>
