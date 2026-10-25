@@ -1510,96 +1510,7 @@ export default function App() {
 
             {/* Container Body */}
             <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-16 space-y-20">
-              {/* Customized Route & Travelers Bar */}
-              <section className="bg-white rounded-3xl border border-stone-200/90 p-5 shadow-xs">
-                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-teal-50 text-[#0D9488] flex items-center justify-center shrink-0">
-                      <Compass className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">Customized Trip Route & Travelers</h3>
-                      <p className="text-xs text-stone-500">
-                        Customize pickup, destination, travel date, and travel party
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    {/* Pickup */}
-                    <div className="flex items-center gap-1.5 px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl">
-                      <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                      <span className="text-[10px] font-bold uppercase text-stone-400">Pickup:</span>
-                      <input
-                        type="text"
-                        value={tripParams.origin}
-                        onChange={(e) => setTripParams((p) => ({ ...p, origin: e.target.value }))}
-                        placeholder="Pickup City"
-                        className="w-28 sm:w-36 text-xs font-semibold text-slate-900 bg-transparent focus:outline-none"
-                      />
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setTripParams((p) => ({
-                          ...p,
-                          origin: p.destination,
-                          destination: p.origin,
-                        }))
-                      }
-                      title="Swap Pickup and Destination"
-                      className="p-2 text-stone-600 hover:text-slate-900 hover:bg-stone-100 rounded-xl border border-stone-200 transition-colors text-xs font-bold cursor-pointer"
-                    >
-                      ⇄
-                    </button>
-
-                    {/* Destination */}
-                    <div className="flex items-center gap-1.5 px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl">
-                      <MapPin className="w-3.5 h-3.5 text-[#0D9488] shrink-0" />
-                      <span className="text-[10px] font-bold uppercase text-stone-400">Destination:</span>
-                      <input
-                        type="text"
-                        value={tripParams.destination}
-                        onChange={(e) => setTripParams((p) => ({ ...p, destination: e.target.value }))}
-                        placeholder="Destination City"
-                        className="w-28 sm:w-36 text-xs font-semibold text-slate-900 bg-transparent focus:outline-none"
-                      />
-                    </div>
-
-                    {/* Planned Date */}
-                    <div className="flex items-center gap-1.5 px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl">
-                      <Calendar className="w-3.5 h-3.5 text-[#0D9488] shrink-0" />
-                      <span className="text-[10px] font-bold uppercase text-stone-400">Date:</span>
-                      <input
-                        type="date"
-                        value={tripParams.travelDate}
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            setTripParams((p) => ({
-                              ...p,
-                              travelDate: e.target.value,
-                              urgency: 'scheduled',
-                            }));
-                          }
-                        }}
-                        className="text-xs font-semibold text-slate-900 bg-transparent focus:outline-none cursor-pointer"
-                      />
-                    </div>
-
-                    {/* Manage Travelers */}
-                    <button
-                      type="button"
-                      onClick={() => setManageMembersModalOpen(true)}
-                      className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[#0F1E36] bg-stone-100 hover:bg-stone-200 border border-stone-200 rounded-xl transition-colors cursor-pointer"
-                    >
-                      <Users className="w-3.5 h-3.5 text-[#0D9488]" />
-                      <span>{familyMembers.length} Travelers: {familyMembers.map((m) => m.name.split(' ')[0]).join(', ')}</span>
-                      <span className="text-[11px] underline font-bold ml-1 text-[#0D9488]">Edit →</span>
-                    </button>
-                  </div>
-                </div>
-                  {/* POPULAR DESTINATIONS SECTION */}
+              {/* POPULAR DESTINATIONS SECTION */}
               <section id="destinations-section" className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                   <div>
@@ -1611,7 +1522,7 @@ export default function App() {
                       Popular Destinations
                     </h2>
                     <p className="text-xs sm:text-sm text-stone-600 max-w-xl mt-1">
-                      Explore handpicked destinations with genuine travel insights, seasonal budget benchmarks, and certified local guides.
+                      Explore handpicked destinations with genuine travel insights, best visiting seasons, and certified local guides.
                     </p>
                   </div>
 
@@ -1645,70 +1556,48 @@ export default function App() {
                         {visibleDests.map((dest) => (
                           <div
                             key={dest.id}
-                            className="group bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+                            className="group bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
                           >
-                            <div className="relative h-56 overflow-hidden">
+                            <div className="relative h-52 sm:h-56 overflow-hidden bg-stone-100">
                               <img
                                 src={dest.image}
                                 alt={dest.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                loading="lazy"
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                               />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity" />
 
-                              <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-slate-900/70 backdrop-blur-xs text-white text-[11px] font-semibold">
+                              <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-slate-900/75 backdrop-blur-xs text-white text-[11px] font-semibold tracking-wide shadow-xs">
                                 {dest.category}
                               </span>
+                            </div>
 
-                              <button
-                                type="button"
-                                onClick={() => handleToggleWishlistDest(dest.name)}
-                                aria-label={`Save ${dest.name} to wishlist`}
-                                className="absolute top-3 right-3 p-1.5 rounded-full bg-white/80 backdrop-blur-xs hover:bg-white text-rose-500 shadow-xs transition-colors cursor-pointer"
-                              >
-                                <Heart
-                                  className={`w-4 h-4 ${
-                                    wishlistDestinations.includes(dest.name)
-                                      ? 'fill-rose-500 text-rose-500'
-                                      : 'text-slate-400'
-                                  }`}
-                                />
-                              </button>
-
-                              <div className="absolute bottom-3 left-3.5 right-3.5 text-white">
-                                <h3 className="text-lg font-bold font-serif-display drop-shadow-sm">
+                            <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                              <div>
+                                <h3 className="text-xl font-bold text-slate-900 group-hover:text-[#0D9488] font-serif-display transition-colors">
                                   {dest.name}
                                 </h3>
-                                <p className="text-xs text-stone-200 flex items-center gap-1">
-                                  <MapPin className="w-3 h-3 text-teal-300 shrink-0" />
+                                <p className="text-xs text-stone-500 flex items-center gap-1.5 mt-1.5">
+                                  <MapPin className="w-3.5 h-3.5 text-[#0D9488] shrink-0" />
                                   <span className="truncate">{dest.state}, {dest.country}</span>
                                 </p>
                               </div>
-                            </div>
 
-                            <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                              <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
-                                {dest.description}
-                              </p>
-
-                              <div className="space-y-2 pt-2 border-t border-stone-100 text-xs">
-                                <div className="flex justify-between text-stone-500">
-                                  <span>Best Season:</span>
-                                  <span className="font-semibold text-slate-800">{dest.bestSeason}</span>
+                              <div className="space-y-3 pt-3 border-t border-stone-100">
+                                <div className="flex items-center justify-between text-xs text-stone-500">
+                                  <span>Best Season</span>
+                                  <span className="font-semibold text-slate-800 bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-200/60 font-medium">
+                                    {dest.bestSeason}
+                                  </span>
                                 </div>
-                                <div className="flex justify-between text-stone-500">
-                                  <span>Approx Budget:</span>
-                                  <span className="font-semibold text-[#0D9488] font-mono-num">{dest.approxNightBudget}/nt</span>
-                                </div>
-                              </div>
 
-                              <div className="pt-2">
                                 <button
                                   type="button"
                                   onClick={() => setActiveDestinationModal(dest)}
-                                  className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-stone-100 hover:bg-[#0F1E36] text-slate-800 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-stone-100 group-hover:bg-[#0F1E36] text-slate-800 group-hover:text-white text-xs font-bold transition-all duration-200 cursor-pointer shadow-2xs"
                                 >
                                   <span>Explore Destination</span>
-                                  <ArrowRight className="w-3.5 h-3.5" />
+                                  <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                                 </button>
                               </div>
                             </div>
@@ -1749,7 +1638,7 @@ export default function App() {
                     </>
                   );
                 })()}
-              </section>            </section>
+              </section>
 
               {/* FEATURED TOUR PACKAGES SECTION */}
               <section id="packages-section" className="space-y-6">
@@ -2102,58 +1991,50 @@ export default function App() {
               {filteredDestinations.map((dest) => (
                 <div
                   key={dest.id}
-                  className="group bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+                  className="group bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
                 >
-                  <div className="relative h-56 overflow-hidden">
+                  <div className="relative h-52 sm:h-56 overflow-hidden bg-stone-100">
                     <img
                       src={dest.image}
                       alt={dest.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
-                    <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-slate-900/70 text-white text-[11px] font-semibold">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity" />
+
+                    <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-slate-900/75 backdrop-blur-xs text-white text-[11px] font-semibold tracking-wide shadow-xs">
                       {dest.category}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleWishlistDest(dest.name)}
-                      className="absolute top-3 right-3 p-1.5 rounded-full bg-white/80 text-rose-500 shadow-xs cursor-pointer"
-                    >
-                      <Heart
-                        className={`w-4 h-4 ${
-                          wishlistDestinations.includes(dest.name)
-                            ? 'fill-rose-500 text-rose-500'
-                            : 'text-slate-400'
-                        }`}
-                      />
-                    </button>
-                    <div className="absolute bottom-3 left-3.5 right-3.5 text-white">
-                      <h3 className="text-lg font-bold font-serif-display">{dest.name}</h3>
-                      <p className="text-xs text-stone-200 flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-teal-300" />
-                        <span>{dest.state}, {dest.country}</span>
+                  </div>
+
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900 group-hover:text-[#0D9488] font-serif-display transition-colors">
+                        {dest.name}
+                      </h3>
+                      <p className="text-xs text-stone-500 flex items-center gap-1.5 mt-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-[#0D9488] shrink-0" />
+                        <span className="truncate">{dest.state}, {dest.country}</span>
                       </p>
                     </div>
-                  </div>
-                  <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                    <p className="text-xs text-stone-600 line-clamp-2">{dest.description}</p>
-                    <div className="space-y-1 text-xs text-stone-500 pt-2 border-t border-stone-100">
-                      <div className="flex justify-between">
-                        <span>Best Season:</span>
-                        <span className="font-semibold text-slate-800">{dest.bestSeason}</span>
+
+                    <div className="space-y-3 pt-3 border-t border-stone-100">
+                      <div className="flex items-center justify-between text-xs text-stone-500">
+                        <span>Best Season</span>
+                        <span className="font-semibold text-slate-800 bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-200/60 font-medium">
+                          {dest.bestSeason}
+                        </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Night Budget:</span>
-                        <span className="font-semibold text-[#0D9488] font-mono-num">{dest.approxNightBudget}</span>
-                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveDestinationModal(dest)}
+                        className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-stone-100 group-hover:bg-[#0F1E36] text-slate-800 group-hover:text-white text-xs font-bold transition-all duration-200 cursor-pointer shadow-2xs"
+                      >
+                        <span>Explore Destination</span>
+                        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveDestinationModal(dest)}
-                      className="w-full py-2 rounded-xl bg-stone-100 hover:bg-[#0F1E36] text-slate-800 hover:text-white text-xs font-bold transition-colors cursor-pointer"
-                    >
-                      Explore Destination Details →
-                    </button>
                   </div>
                 </div>
               ))}
