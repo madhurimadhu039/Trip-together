@@ -37,6 +37,9 @@ import {
   Printer,
   Bookmark,
   AlertCircle,
+  Home,
+  Calculator,
+  Info,
 } from 'lucide-react';
 import type {
   NavSection,
@@ -887,7 +890,7 @@ export default function App() {
     }
   };
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900 selection:bg-[#0D9488] selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900 selection:bg-[#0D9488] selection:text-white overflow-x-hidden">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 px-4 py-3 bg-[#0F1E36] text-white text-xs font-semibold rounded-2xl shadow-2xl border border-teal-500/30 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
@@ -1282,57 +1285,46 @@ export default function App() {
               )}
             </div>
 
-            {/* Mobile Hamburger Toggle (Requirement 7) — clearly visible with comfortable touch target */}
+            {/* Mobile Hamburger Toggle — visible with comfortable touch target and accessible states */}
             <button
               type="button"
+              id="mobile-nav-toggle"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={mobileMenuOpen}
-              className="lg:hidden w-11 h-11 rounded-xl bg-[#0F1E36] text-white hover:bg-[#1E3A8A] flex items-center justify-center transition-colors cursor-pointer shadow-sm shrink-0 border border-white/10 active:scale-95"
+              aria-controls="mobile-nav-menu"
+              className={`lg:hidden w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-sm shrink-0 border active:scale-95 z-50 ${
+                mobileMenuOpen
+                  ? 'bg-stone-900 text-teal-300 border-stone-800'
+                  : 'bg-[#0F1E36] text-white hover:bg-[#1E3A8A] border-white/10'
+              }`}
             >
               {mobileMenuOpen ? (
-                <X className="w-5 h-5 text-teal-300" />
+                <X className="w-5 h-5 text-teal-300 transition-transform duration-200" />
               ) : (
-                <Menu className="w-5 h-5 text-teal-300" />
+                <Menu className="w-5 h-5 text-teal-300 transition-transform duration-200" />
               )}
             </button>
           </div>
         </div>
 
-        {/* Functional Mobile Navigation Drawer (Requirement 7) */}
+        {/* Functional Responsive Mobile Navigation Menu (Attached below the navbar) */}
         {mobileMenuOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            {/* Backdrop overlay — clicking closes the drawer */}
+          <>
+            {/* Backdrop overlay — clicking closes the menu */}
             <div
-              className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+              className="lg:hidden fixed inset-x-0 bottom-0 top-[65px] bg-slate-900/50 backdrop-blur-xs z-40 transition-opacity animate-in fade-in duration-200"
               onClick={() => setMobileMenuOpen(false)}
               aria-hidden="true"
             />
 
-            {/* Sliding Drawer Panel */}
-            <div className="fixed top-0 right-0 bottom-0 w-full max-w-sm bg-white shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200 overflow-y-auto">
-              {/* Drawer Top Header */}
-              <div className="p-4 border-b border-stone-200 flex items-center justify-between bg-stone-50">
-                <TripTogetherLogo
-                  variant="compact"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    navigateAndScroll('dashboard');
-                  }}
-                  ariaLabel="Trip Together Homepage"
-                />
-                <button
-                  type="button"
-                  onClick={() => setMobileMenuOpen(false)}
-                  aria-label="Close navigation menu"
-                  className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-stone-200 transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Account Section in Mobile Drawer */}
-              <div className="p-4 border-b border-stone-100 bg-[#FAF9F6]">
+            {/* Mobile Dropdown Panel directly below navbar */}
+            <div
+              id="mobile-nav-menu"
+              className="lg:hidden absolute top-full left-0 right-0 w-full bg-white border-b border-stone-200 shadow-2xl z-40 flex flex-col max-h-[calc(100vh-70px)] overflow-y-auto animate-in slide-in-from-top-2 duration-200"
+            >
+              {/* Account Quick Bar in Mobile Menu */}
+              <div className="p-4 border-b border-stone-100 bg-stone-50">
                 {authUser ? (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -1366,18 +1358,18 @@ export default function App() {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="text-[11px] text-stone-500 font-medium">
-                      Sign in to manage bookings and family trips
+                      Manage bookings and family trips
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => {
                           setMobileMenuOpen(false);
                           openAuthPrompt('signin');
                         }}
-                        className="flex-1 py-2 px-3 text-xs font-bold text-white bg-[#0F1E36] rounded-xl text-center cursor-pointer shadow-xs hover:bg-[#1E3A8A]"
+                        className="py-1.5 px-3 text-xs font-bold text-white bg-[#0F1E36] rounded-xl text-center cursor-pointer shadow-xs hover:bg-[#1E3A8A]"
                       >
                         Sign In
                       </button>
@@ -1387,7 +1379,7 @@ export default function App() {
                           setMobileMenuOpen(false);
                           openAuthPrompt('signup');
                         }}
-                        className="flex-1 py-2 px-3 text-xs font-bold text-[#0D9488] bg-teal-50 border border-teal-200 rounded-xl text-center cursor-pointer hover:bg-teal-100"
+                        className="py-1.5 px-3 text-xs font-bold text-[#0D9488] bg-teal-50 border border-teal-200 rounded-xl text-center cursor-pointer hover:bg-teal-100"
                       >
                         Sign Up
                       </button>
@@ -1396,51 +1388,62 @@ export default function App() {
                 )}
               </div>
 
-              {/* Navigation links in Mobile Drawer */}
-              <nav className="p-4 space-y-1 flex-1">
+              {/* Navigation links in Mobile Menu */}
+              <nav className="p-3 space-y-1" aria-label="Mobile Navigation">
                 {[
-                  { id: 'dashboard', label: 'Home' },
-                  { id: 'destinations', label: 'Explore Destinations' },
-                  { id: 'packages', label: 'Tour Packages' },
-                  { id: 'guides', label: 'Local Guides' },
-                  { id: 'builder', label: 'Trip Planner' },
-                  { id: 'transport', label: 'Find Transport' },
-                  { id: 'hotels', label: 'Hotels & Rooms' },
-                  { id: 'how-it-works', label: 'How It Works' },
-                  { id: 'contact', label: 'Contact Us' },
-                  { id: 'budget', label: 'My Bookings & Budget' },
-                  { id: 'privacy', label: 'Privacy Policy' },
-                  { id: 'terms', label: 'Terms & Conditions' },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => navigateAndScroll(item.id as NavSection)}
-                    className={`w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl flex items-center justify-between transition-colors cursor-pointer ${
-                      activeSection === item.id
-                        ? 'bg-teal-50 text-[#0D9488] font-bold'
-                        : 'text-slate-700 hover:bg-stone-50'
-                    }`}
-                  >
-                    <span>{item.label}</span>
-                    <ChevronRight className="w-4 h-4 text-stone-400" />
-                  </button>
-                ))}
+                  { id: 'dashboard', label: 'Home', icon: Home },
+                  { id: 'destinations', label: 'Explore Destinations', icon: MapPin },
+                  { id: 'packages', label: 'Tour Packages', icon: Package },
+                  { id: 'guides', label: 'Local Guides', icon: Compass },
+                  { id: 'builder', label: 'Trip Planner', icon: Sparkles },
+                  { id: 'transport', label: 'Find Transport', icon: Train },
+                  { id: 'hotels', label: 'Hotels & Rooms', icon: Building2 },
+                  { id: 'how-it-works', label: 'How It Works', icon: Info },
+                  { id: 'contact', label: 'Contact Us', icon: Mail },
+                  { id: 'budget', label: 'My Bookings & Budget', icon: Calculator },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeSection === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        navigateAndScroll(item.id as NavSection);
+                      }}
+                      className={`w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl flex items-center justify-between transition-colors cursor-pointer ${
+                        isActive
+                          ? 'bg-teal-50 text-[#0D9488] font-bold border border-teal-200/60'
+                          : 'text-slate-700 hover:bg-stone-50 active:bg-stone-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-[#0D9488]' : 'text-stone-400'}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      <ChevronRight className={`w-4 h-4 ${isActive ? 'text-[#0D9488]' : 'text-stone-300'}`} />
+                    </button>
+                  );
+                })}
               </nav>
 
-              {/* Mobile Drawer Footer CTA */}
-              <div className="p-4 border-t border-stone-200">
+              {/* Mobile Menu Footer CTA */}
+              <div className="p-3.5 border-t border-stone-200 bg-stone-50">
                 <button
                   type="button"
-                  onClick={() => navigateAndScroll('builder')}
-                  className="w-full py-3 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigateAndScroll('builder');
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4 text-teal-200" />
                   <span>Plan a Custom Trip</span>
                 </button>
               </div>
             </div>
-          </div>
+          </>
         )}
       </header>
 
@@ -1560,14 +1563,7 @@ export default function App() {
                                 </p>
                               </div>
 
-                              <div className="space-y-3 pt-3 border-t border-stone-100">
-                                <div className="flex items-center justify-between text-xs text-stone-500">
-                                  <span>Best Season</span>
-                                  <span className="font-semibold text-slate-800 bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-200/60 font-medium">
-                                    {dest.bestSeason}
-                                  </span>
-                                </div>
-
+                              <div className="pt-3 border-t border-stone-100">
                                 <button
                                   type="button"
                                   onClick={() => setActiveDestinationModal(dest)}
@@ -1717,27 +1713,15 @@ export default function App() {
                 </div>
               </section>
 
-              {/* LOCAL TOUR GUIDES SECTION — initial 3, with See More */}
+              {/* LOCAL TOUR GUIDES SECTION — exactly 3 verified guides on landing page */}
               <section className="space-y-6">
                 <LocalGuidesSection
-                  guides={showAllGuides ? guides : guides.slice(0, GUIDES_INITIAL_COUNT)}
+                  guides={guides.slice(0, 3)}
                   onSelectGuide={(g) => setActiveGuideProfileModal(g)}
                   onContactGuide={(g) => setActiveGuideContactModal(g)}
                   onRegisterAsGuide={() => setGuideRegisterModalOpen(true)}
                   isHomePage={true}
                 />
-                {guides.length > GUIDES_INITIAL_COUNT && (
-                  <div className="flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => setShowAllGuides((prev) => !prev)}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-slate-800 text-xs font-bold transition-colors cursor-pointer shadow-xs"
-                    >
-                      <ChevronDown className={`w-4 h-4 transition-transform ${showAllGuides ? 'rotate-180' : ''}`} />
-                      {showAllGuides ? 'Show Less' : `See More Guides (${guides.length - GUIDES_INITIAL_COUNT} more)`}
-                    </button>
-                  </div>
-                )}
               </section>
 
               {/* WHY CHOOSE TRIP TOGETHER */}
@@ -1978,6 +1962,7 @@ export default function App() {
               setItineraryDays={setItineraryDays}
               onShortlistBooking={handleShortlistBooking}
               userId={authUser?.id}
+              onNavigateHotels={() => navigateAndScroll('hotels')}
             />
           </div>
         )}

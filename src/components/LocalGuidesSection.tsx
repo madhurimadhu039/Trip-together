@@ -161,7 +161,7 @@ export const LocalGuidesSection: React.FC<LocalGuidesSectionProps> = ({
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(showAllGuides ? filteredGuides : filteredGuides.slice(0, GUIDES_INITIAL_COUNT)).map((guide) => (
+            {(isHomePage ? filteredGuides.slice(0, 3) : (showAllGuides ? filteredGuides : filteredGuides.slice(0, GUIDES_INITIAL_COUNT))).map((guide) => (
               <div
                 key={guide.id}
                 className="bg-white rounded-2xl border border-stone-200/90 hover:border-emerald-500/40 hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden group"
@@ -281,8 +281,8 @@ export const LocalGuidesSection: React.FC<LocalGuidesSectionProps> = ({
             ))}
           </div>
 
-          {/* See More / Show Less for Local Guides */}
-          {filteredGuides.length > GUIDES_INITIAL_COUNT && (
+          {/* See More / Show Less for Local Guides (omitted on landing page) */}
+          {!isHomePage && filteredGuides.length > GUIDES_INITIAL_COUNT && (
             <div className="flex items-center justify-center pt-4">
               <button
                 type="button"
