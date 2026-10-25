@@ -561,7 +561,27 @@ export default function App() {
     };
     window.addEventListener('popstate', handlePopState);
     updatePageTitle(activeSection);
-    return () => window.removeEventListener('popstate', handlePopState);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+        setFamilyDropdownOpen(false);
+        setProfileMenuOpen(false);
+      }
+    };
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const openAuthPrompt = (mode: 'signin' | 'signup' = 'signin', targetSection?: NavSection) => {
@@ -900,7 +920,7 @@ export default function App() {
       )}
 
       {/* TOP NAVIGATION BAR */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/90 shadow-xs">
+      <header className="sticky top-0 z-50 bg-white border-b border-stone-200/90 shadow-xs relative">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-3.5 flex items-center justify-between gap-4">
           {/* Brand Logo (Requirement 1 & 9) */}
           <div className="hidden sm:block">
@@ -1293,9 +1313,9 @@ export default function App() {
               aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-nav-menu"
-              className={`lg:hidden w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-sm shrink-0 border active:scale-95 z-50 ${
+              className={`lg:hidden w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-sm shrink-0 border active:scale-95 ${
                 mobileMenuOpen
-                  ? 'bg-stone-900 text-teal-300 border-stone-800'
+                  ? 'bg-[#0F1E36] text-teal-300 border-teal-500/50 ring-2 ring-teal-500/30'
                   : 'bg-[#0F1E36] text-white hover:bg-[#1E3A8A] border-white/10'
               }`}
             >
@@ -1313,7 +1333,7 @@ export default function App() {
           <>
             {/* Backdrop overlay — clicking closes the menu */}
             <div
-              className="lg:hidden fixed inset-x-0 bottom-0 top-[65px] bg-slate-900/50 backdrop-blur-xs z-40 transition-opacity animate-in fade-in duration-200"
+              className="lg:hidden fixed inset-0 top-[65px] bg-slate-900/50 backdrop-blur-xs z-40 transition-opacity animate-in fade-in duration-200"
               onClick={() => setMobileMenuOpen(false)}
               aria-hidden="true"
             />
@@ -1321,7 +1341,7 @@ export default function App() {
             {/* Mobile Dropdown Panel directly below navbar */}
             <div
               id="mobile-nav-menu"
-              className="lg:hidden absolute top-full left-0 right-0 w-full bg-white border-b border-stone-200 shadow-2xl z-40 flex flex-col max-h-[calc(100vh-70px)] overflow-y-auto animate-in slide-in-from-top-2 duration-200"
+              className="lg:hidden absolute top-full left-0 right-0 w-full bg-white border-b border-stone-200 shadow-2xl z-50 flex flex-col max-h-[calc(100vh-70px)] overflow-y-auto animate-in slide-in-from-top-2 duration-200"
             >
               {/* Account Quick Bar in Mobile Menu */}
               <div className="p-4 border-b border-stone-100 bg-stone-50">
@@ -1524,7 +1544,7 @@ export default function App() {
                       Popular Destinations
                     </h2>
                     <p className="text-xs sm:text-sm text-stone-600 max-w-xl mt-1">
-                      Explore handpicked destinations with genuine travel insights, best visiting seasons, and certified local guides.
+                      Explore handpicked destinations with genuine travel insights and certified local guides.
                     </p>
                   </div>
                 </div>
