@@ -1715,25 +1715,12 @@ export default function App() {
 
               {/* LOCAL TOUR GUIDES SECTION — initial 3, with See More */}
               <section className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                  <div>
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mb-2">
-                      <Award className="w-3.5 h-3.5" />
-                      <span>Certified Professionals</span>
-                    </div>
-                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif-display">Local Guides</h2>
-                    <p className="text-xs sm:text-sm text-stone-600 max-w-xl mt-1">Connect with certified local guides who provide authentic cultural narration and senior citizen care.</p>
-                  </div>
-                  <button type="button" onClick={() => navigateAndScroll('guides')} className="text-xs font-bold text-[#0D9488] hover:underline flex items-center gap-1 cursor-pointer shrink-0">
-                    <span>View All Guides</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
                 <LocalGuidesSection
                   guides={showAllGuides ? guides : guides.slice(0, GUIDES_INITIAL_COUNT)}
                   onSelectGuide={(g) => setActiveGuideProfileModal(g)}
                   onContactGuide={(g) => setActiveGuideContactModal(g)}
                   onRegisterAsGuide={() => setGuideRegisterModalOpen(true)}
+                  isHomePage={true}
                 />
                 {guides.length > GUIDES_INITIAL_COUNT && (
                   <div className="flex justify-center">
