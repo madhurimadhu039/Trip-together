@@ -218,22 +218,24 @@ export const LocalGuidesSection: React.FC<LocalGuidesSectionProps> = ({
                       {guide.bio}
                     </p>
 
-                    {/* Specialties Tags */}
-                    <div className="mt-3.5 flex flex-wrap gap-1.5">
-                      {guide.specialties.slice(0, 3).map((spec, idx) => (
-                        <span
-                          key={idx}
-                          className="text-[11px] px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-medium"
-                        >
-                          {spec}
-                        </span>
-                      ))}
-                      {guide.specialties.length > 3 && (
-                        <span className="text-[11px] px-1.5 py-0.5 rounded-md text-stone-400">
-                          +{guide.specialties.length - 3}
-                        </span>
-                      )}
-                    </div>
+                    {/* Specialties / Key Highlights (Omitted on Landing Page) */}
+                    {!isHomePage && (
+                      <div className="mt-3.5 flex flex-wrap gap-1.5">
+                        {guide.specialties.slice(0, 3).map((spec, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[11px] px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-medium"
+                          >
+                            {spec}
+                          </span>
+                        ))}
+                        {guide.specialties.length > 3 && (
+                          <span className="text-[11px] px-1.5 py-0.5 rounded-md text-stone-400">
+                            +{guide.specialties.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Languages */}
@@ -243,34 +245,36 @@ export const LocalGuidesSection: React.FC<LocalGuidesSectionProps> = ({
                   </div>
                 </div>
 
-                {/* Card Footer: Pricing & Action Buttons */}
-                <div className="p-4 bg-stone-50/70 border-t border-stone-100 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xs text-stone-500 font-medium">Daily Rate</div>
-                    <div className="text-base font-bold text-slate-900">
-                      ₹{guide.dailyRate.toLocaleString('en-IN')}
-                      <span className="text-[11px] text-stone-400 font-normal"> / day</span>
+                {/* Card Footer: Pricing & Action Buttons (Omitted on Landing Page) */}
+                {!isHomePage && (
+                  <div className="p-4 bg-stone-50/70 border-t border-stone-100 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs text-stone-500 font-medium">Daily Rate</div>
+                      <div className="text-base font-bold text-slate-900">
+                        ₹{guide.dailyRate.toLocaleString('en-IN')}
+                        <span className="text-[11px] text-stone-400 font-normal"> / day</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onSelectGuide?.(guide)}
+                        className="px-3 py-1.5 text-xs font-semibold text-stone-700 hover:text-slate-900 hover:bg-stone-200/80 rounded-lg transition-colors cursor-pointer"
+                      >
+                        View Profile
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onContactGuide?.(guide)}
+                        className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-[#0D4A42] hover:bg-[#09352F] text-white shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>Contact</span>
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onSelectGuide?.(guide)}
-                      className="px-3 py-1.5 text-xs font-semibold text-stone-700 hover:text-slate-900 hover:bg-stone-200/80 rounded-lg transition-colors cursor-pointer"
-                    >
-                      View Profile
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onContactGuide?.(guide)}
-                      className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-[#0D4A42] hover:bg-[#09352F] text-white shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span>Contact</span>
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
             ))}
           </div>
