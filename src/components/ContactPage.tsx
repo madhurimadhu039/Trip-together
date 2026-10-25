@@ -14,18 +14,14 @@ import {
 } from 'lucide-react';
 
 interface ContactPageProps {
-  defaultEmail?: string;
-  defaultName?: string;
   onNavigateHome?: () => void;
 }
 
 export const ContactPage: React.FC<ContactPageProps> = ({
-  defaultEmail = '',
-  defaultName = '',
   onNavigateHome,
 }) => {
-  const [name, setName] = useState(defaultName || '');
-  const [email, setEmail] = useState(defaultEmail || '');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [category, setCategory] = useState('Trip Planning & Inquiry');
   const [message, setMessage] = useState('');
@@ -360,7 +356,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                         required
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="e.g. Madhuri Rao"
+                        placeholder="Enter your full name"
                         className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all"
                       />
                     </div>
@@ -375,7 +371,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@example.com"
+                        placeholder="Enter your email address"
                         className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all"
                       />
                     </div>

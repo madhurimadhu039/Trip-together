@@ -2148,8 +2148,6 @@ export default function App() {
         {/* CONTACT US PAGE */}
         {activeSection === 'contact' && (
           <ContactPage
-            defaultEmail={authUser?.email}
-            defaultName={authUser?.name}
             onNavigateHome={() => navigateAndScroll('dashboard')}
           />
         )}
