@@ -1,513 +1,307 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  Package,
-  ExternalLink,
-  AlertTriangle,
-  Check,
+  Search,
+  MapPin,
+  Clock,
+  ArrowRight,
+  Sparkles,
   X,
-  Plus,
-  Database,
-  ShieldCheck,
-  Eye,
-  Heart,
-  Calendar,
-  ChevronDown,
+  PackageCheck,
+  CheckCircle2,
 } from 'lucide-react';
-import type {
-  TripParams,
-  TourPackageOption,
-  ProviderAdapterStatus,
-  SavedBookingItem,
-  PackageItem,
-} from '../types';
+import type { DestinationItem, PackageItem } from '../types';
 
-interface PackagesSectionProps {
-  tripParams: TripParams;
-  packages: TourPackageOption[];
-  providerAdapters: ProviderAdapterStatus[];
-  tourImageUrl: string;
-  onShortlistBooking: (item: Omit<SavedBookingItem, 'id' | 'addedAt'>) => void;
-  onSelectPackage?: (pkg: any) => void;
-  onBookPackage?: (pkg: any) => void;
-  onToggleWishlist?: (pkgId: string) => void;
-  wishlist?: string[];
+export interface PackagesSectionProps {
+  destinations: DestinationItem[];
+  packages: PackageItem[];
+  onSelectPackage: (pkg: PackageItem) => void;
+  onSelectDestination?: (dest: DestinationItem) => void;
+  onNavigateHome: () => void;
 }
 
 export const PackagesSection: React.FC<PackagesSectionProps> = ({
-  tripParams,
+  destinations,
   packages,
-  providerAdapters,
-  tourImageUrl,
-  onShortlistBooking,
   onSelectPackage,
-  onBookPackage,
-  onToggleWishlist,
-  wishlist = [],
+  onSelectDestination,
+  onNavigateHome,
 }) => {
-  const [durationFilter, setDurationFilter] = useState<'all' | 1 | 2 | 3>('all');
-  const [addedPackageKey, setAddedPackageKey] = useState<string | null>(null);
-  const [expandedPackageId, setExpandedPackageId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const [showAllPackages, setShowAllPackages] = useState<boolean>(false);
-  const PACKAGES_INITIAL_COUNT = 2;
+  // Pair each destination with its configured package if available
+  const destinationPackages = useMemo(() => {
+    return destinations.map((dest) => {
+      const matchedPkg = packages.find(
+        (p) =>
+          p.destinationId === dest.id ||
+          p.destination.toLowerCase().includes(dest.name.toLowerCase()) ||
+          dest.name.toLowerCase().includes(p.destination.toLowerCase())
+      );
 
-  const filteredPackages = packages.filter((pkg) => {
-    if (durationFilter === 'all') return true;
-    return pkg.durationDays === durationFilter;
-  });
+      return {
+        destination: dest,
+        packageItem: matchedPkg || null,
+      };
+    });
+  }, [destinations, packages]);
 
-  const visiblePackages = showAllPackages
-    ? filteredPackages
-    : filteredPackages.slice(0, PACKAGES_INITIAL_COUNT);
+  // Case-insensitive, partial-text destination search filter
+  const filteredItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return destinationPackages;
+
+    return destinationPackages.filter(({ destination, packageItem }) => {
+      const matchDestName = destination.name.toLowerCase().includes(q);
+      const matchState = destination.state.toLowerCase().includes(q);
+      const matchFullName = destination.fullName.toLowerCase().includes(q);
+      const matchTitle = packageItem?.title.toLowerCase().includes(q) || false;
+      return matchDestName || matchState || matchFullName || matchTitle;
+    });
+  }, [destinationPackages, searchQuery]);
+
+  const handleCardClick = (dest: DestinationItem, pkg: PackageItem | null) => {
+    if (pkg) {
+      onSelectPackage(pkg);
+    } else if (onSelectDestination) {
+      onSelectDestination(dest);
+    }
+  };
 
   return (
     <div className="space-y-8">
-      {/* Header & Darshan Transparency Policy */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-6 border-b border-slate-200">
-          <div>
-            <p className="text-xs text-slate-500">
-              Authorized Tourism Corporations & Rail Packages · {tripParams.destination}
-            </p>
-            <h2 className="text-2xl font-bold text-slate-900 mt-1">
-              Ready-Made Tour Packages & Provider Discovery
-            </h2>
+      {/* Top Header & Navigation */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2 border-b border-stone-200">
+        <div>
+          <button
+            type="button"
+            onClick={onNavigateHome}
+            className="text-xs font-semibold text-[#0D9488] hover:underline mb-2 inline-flex items-center gap-1 cursor-pointer"
+          >
+            ← Back to Home
+          </button>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-50 text-[#0D9488] border border-emerald-200/80 text-[11px] font-bold uppercase tracking-wider">
+              <PackageCheck className="w-3.5 h-3.5" />
+              Verified Itineraries
+            </span>
+            <span className="text-xs text-stone-400">•</span>
+            <span className="text-xs text-stone-500 font-medium">
+              {destinations.length} Destinations Available
+            </span>
           </div>
-
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg w-fit">
-            <button
-              type="button"
-              onClick={() => setDurationFilter('all')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                durationFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              All Durations ({packages.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setDurationFilter(1)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                durationFilter === 1 ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              1-Day Darshan
-            </button>
-            <button
-              type="button"
-              onClick={() => setDurationFilter(2)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                durationFilter === 2 ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              2-Day Transit
-            </button>
-            <button
-              type="button"
-              onClick={() => setDurationFilter(3)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                durationFilter === 3 ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              3-Day Rail Tour
-            </button>
-          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 font-serif-display">
+            Tours & Tour Packages
+          </h1>
+          <p className="text-xs sm:text-sm text-stone-600 max-w-2xl mt-1 leading-relaxed">
+            Curated, all-inclusive journeys across every destination from Explore Destinations. 
+            Enjoy transparent day-by-day itineraries, certified local guidance, and zero hidden tariffs.
+          </p>
         </div>
 
-        <div className="mt-4 flex items-start gap-2.5 text-xs text-slate-600">
-          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <span>
-            <strong>Strict TTD Darshan Verification Policy:</strong> No package is ever marked as guaranteeing Tirumala Darshan unless confirmed by the official provider's active quota terms. Third-party or urgent bookings within 7 days of travel do not carry pre-allotted ₹300 Special Entry Darshan tokens.
-          </span>
+        {/* Live Search Input */}
+        <div className="w-full md:w-80 lg:w-96 shrink-0">
+          <label htmlFor="package-search" className="sr-only">
+            Search packages by destination
+          </label>
+          <div className="relative">
+            <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              id="package-search"
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by destination or state..."
+              className="w-full pl-10 pr-9 py-2.5 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:border-transparent transition-all shadow-xs"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-0.5 cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-stone-500 mt-1.5 px-1">
+            <span>
+              {searchQuery.trim()
+                ? `Showing ${filteredItems.length} matching package${filteredItems.length === 1 ? '' : 's'}`
+                : `Showing all ${filteredItems.length} destination packages`}
+            </span>
+            {searchQuery.trim() && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="text-[#0D9488] hover:underline font-semibold cursor-pointer"
+              >
+                Reset
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Tour Package Cards */}
-      <div className="grid grid-cols-1 gap-6">
-        {visiblePackages.map((pkg) => {
-          const adultAndSeniorCount = tripParams.adults + tripParams.seniors;
-          const totalFamilyPackagePrice =
-            pkg.pricePerAdult * adultAndSeniorCount + pkg.pricePerChild * tripParams.children;
+      {/* Package Cards Grid */}
+      {filteredItems.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredItems.map(({ destination: dest, packageItem: pkg }) => {
+            const cardTitle = pkg ? pkg.title : `${dest.name} Discovery Package`;
+            const durationText = pkg?.duration || null;
+            const priceText =
+              pkg && typeof pkg.pricePerPerson === 'number' && pkg.pricePerPerson > 0
+                ? pkg.pricePerPerson
+                : null;
+            const highlights = pkg?.highlights?.slice(0, 2) || dest.popularAttractions?.slice(0, 2) || [];
 
-          return (
-            <div
-              key={pkg.id}
-              className="bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-            >
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-4">
-                  {/* Top Bar: Title, Provider, Duration */}
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
-                          {pkg.durationLabel}
-                        </span>
-                        <span className="text-xs text-stone-500 font-medium">
-                          {pkg.providerType} · Ex-{pkg.startingCity}
-                        </span>
-                      </div>
-                      <h3 className="text-lg sm:text-xl font-bold text-slate-900 font-serif-display mt-1">
-                        {pkg.packageTitle}
-                      </h3>
-                      <p className="text-xs text-stone-600 mt-0.5">
-                        Provided by <strong className="text-slate-800">{pkg.providerName}</strong> · Verified Tariff
-                      </p>
-                    </div>
+            return (
+              <div
+                key={dest.id}
+                onClick={() => handleCardClick(dest, pkg)}
+                className="group bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between cursor-pointer focus-within:ring-2 focus-within:ring-[#0D9488]"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleCardClick(dest, pkg);
+                  }
+                }}
+                aria-label={`View tour package details for ${cardTitle}`}
+              >
+                {/* Image Container with Badges */}
+                <div className="relative h-52 sm:h-56 overflow-hidden bg-stone-100">
+                  <img
+                    src={dest.image}
+                    alt={`${dest.name} - ${cardTitle}`}
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent opacity-70 group-hover:opacity-40 transition-opacity" />
 
-                    {/* Quick Price on mobile */}
-                    <div className="lg:hidden text-right">
-                      <span className="text-[11px] text-stone-500 block">From</span>
-                      <span className="text-lg font-bold text-[#0D9488] font-mono-num">
-                        ₹{pkg.pricePerAdult.toLocaleString('en-IN')}<span className="text-xs text-stone-500 font-normal">/adult</span>
+                  {/* Top Floating Badges */}
+                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none">
+                    {durationText ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-900/85 backdrop-blur-xs text-white text-[11px] font-semibold shadow-xs">
+                        <Clock className="w-3 h-3 text-emerald-400" />
+                        <span>{durationText}</span>
                       </span>
-                    </div>
-                  </div>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-900/85 backdrop-blur-xs text-white text-[11px] font-semibold shadow-xs">
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        <span>{dest.category}</span>
+                      </span>
+                    )}
 
-                  {/* Prioritized Key Highlights (3 concise tags) */}
-                  <div className="space-y-1.5 pt-2 border-t border-stone-100">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 block">
-                      Package Highlights
+                    <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-xs text-slate-800 text-[11px] font-bold shadow-xs truncate max-w-[140px]">
+                      {dest.name}
                     </span>
-                    <div className="flex flex-wrap gap-2">
-                      {pkg.inclusions.slice(0, 3).map((inc) => (
-                        <span
-                          key={inc}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-teal-50/80 border border-teal-200/60 text-slate-800 text-xs font-medium"
-                        >
-                          <Check className="w-3.5 h-3.5 text-[#0D9488] shrink-0" />
-                          <span>{inc}</span>
-                        </span>
-                      ))}
-                    </div>
                   </div>
 
-                  {/* Key Details: Darshan & Hotel category */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-stone-600 pt-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-stone-400 font-medium">Hotel:</span>
-                      <span className="font-semibold text-slate-800">{pkg.hotelCategory}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-stone-400 font-medium">Darshan:</span>
-                      <span className={`font-semibold ${pkg.darshanConfirmedInTerms ? 'text-emerald-700' : 'text-amber-700'}`}>
-                        {pkg.darshanConfirmedInTerms ? 'Official Quota Terms' : 'Standard Queue Assistance'}
-                      </span>
-                    </div>
+                  {/* Bottom overlay for destination label */}
+                  <div className="absolute bottom-3 left-3 right-3 text-white pointer-events-none">
+                    <p className="text-xs font-semibold flex items-center gap-1 drop-shadow-md">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span className="truncate">{dest.state}, {dest.country}</span>
+                    </p>
                   </div>
+                </div>
 
-                  {/* Expandable Full Inclusions & Terms */}
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedPackageId((prev) => (prev === pkg.id ? null : pkg.id))}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0D9488] hover:underline cursor-pointer"
-                    >
-                      <ChevronDown
-                        className={`w-4 h-4 transition-transform duration-200 ${
-                          expandedPackageId === pkg.id ? 'rotate-180' : ''
-                        }`}
-                      />
-                      <span>
-                        {expandedPackageId === pkg.id
-                          ? 'Hide Detailed Inclusions & Terms'
-                          : 'Show Full Inclusions & Terms'}
-                      </span>
-                    </button>
+                {/* Card Content */}
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="space-y-2">
+                    <h2 className="text-lg font-bold text-slate-900 group-hover:text-[#0D9488] font-serif-display transition-colors line-clamp-2 leading-snug">
+                      {cardTitle}
+                    </h2>
+                    <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                      {dest.description}
+                    </p>
 
-                    {expandedPackageId === pkg.id && (
-                      <div className="mt-3 p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-3 animate-in fade-in duration-150 text-xs">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <span className="font-bold text-emerald-800 block mb-1">All Inclusions:</span>
-                            <ul className="space-y-1 text-slate-700">
-                              {pkg.inclusions.map((item) => (
-                                <li key={item} className="flex items-start gap-1.5">
-                                  <Check className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
-                                  <span>{item}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div>
-                            <span className="font-bold text-rose-800 block mb-1">Exclusions / Conditions:</span>
-                            <ul className="space-y-1 text-slate-600">
-                              {pkg.exclusions.map((item) => (
-                                <li key={item} className="flex items-start gap-1.5">
-                                  <X className="w-3 h-3 text-rose-500 shrink-0 mt-0.5" />
-                                  <span>{item}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-
-                        <div className="pt-2 border-t border-stone-200 text-stone-600 space-y-1">
-                          <div>
-                            <strong>Cancellation Policy:</strong> {pkg.cancellationTerms}
-                          </div>
-                          <div>
-                            <strong>Transport Details:</strong> {pkg.transportDetails}
-                          </div>
-                          {pkg.publicContactPhone && (
-                            <div>
-                              <strong>Enquiry Helpline:</strong>{' '}
-                              <span className="font-mono-num font-semibold text-slate-900">
-                                {pkg.publicContactPhone}
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                    {/* Highlights Pills */}
+                    {highlights.length > 0 && (
+                      <div className="pt-1 flex flex-wrap gap-1.5">
+                        {highlights.map((h, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-100 text-slate-700 text-[11px] font-medium truncate max-w-full"
+                          >
+                            <CheckCircle2 className="w-3 h-3 text-[#0D9488] shrink-0" />
+                            <span className="truncate">{h}</span>
+                          </span>
+                        ))}
                       </div>
                     )}
                   </div>
-                </div>
 
-                {/* Right Column: Visual + Family Price Breakdown */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 flex flex-col justify-between">
-                  <div>
-                    <div className="relative mb-3 overflow-hidden rounded-lg">
-                      <img
-                        src={tourImageUrl}
-                        alt={pkg.packageTitle}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-36 object-cover border border-slate-200"
-                      />
-                      {onToggleWishlist && (
-                        <button
-                          type="button"
-                          onClick={() => onToggleWishlist(pkg.id)}
-                          aria-label="Toggle package wishlist"
-                          className="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-white/80 backdrop-blur-xs text-rose-500 hover:bg-white shadow-xs transition-colors cursor-pointer"
-                        >
-                          <Heart
-                            className={`w-4 h-4 ${
-                              wishlist.includes(pkg.id) ? 'fill-rose-500 text-rose-500' : 'text-slate-400'
-                            }`}
-                          />
-                        </button>
-                      )}
-                    </div>
-                    <div className="space-y-1.5 text-xs">
-                      <div className="flex justify-between text-slate-600">
-                        <span>Adult / Senior Tariff ({adultAndSeniorCount} pax):</span>
-                        <span className="font-mono-num font-semibold text-slate-900">
-                          ₹{pkg.pricePerAdult.toLocaleString('en-IN')} × {adultAndSeniorCount}
-                        </span>
+                  {/* Price & Action Row */}
+                  <div className="pt-3 border-t border-stone-100 space-y-3">
+                    {priceText ? (
+                      <div className="flex items-baseline justify-between">
+                        <div>
+                          <span className="text-[10px] text-stone-400 font-medium uppercase tracking-wider block">
+                            Starting from
+                          </span>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-lg font-bold text-slate-900">
+                              ₹{priceText.toLocaleString('en-IN')}
+                            </span>
+                            <span className="text-[11px] text-stone-500 font-normal">/ person</span>
+                          </div>
+                        </div>
+                        {pkg?.originalPrice && (
+                          <span className="text-xs text-stone-400 line-through">
+                            ₹{pkg.originalPrice.toLocaleString('en-IN')}
+                          </span>
+                        )}
                       </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Child Tariff ({tripParams.children} child):</span>
-                        <span className="font-mono-num font-semibold text-slate-900">
-                          ₹{pkg.pricePerChild.toLocaleString('en-IN')} × {tripParams.children}
-                        </span>
+                    ) : (
+                      <div className="text-xs text-stone-500 font-medium italic">
+                        Custom itinerary & guide available
                       </div>
-                    </div>
-                  </div>
+                    )}
 
-                  <div className="mt-4 pt-4 border-t border-slate-200">
-                    <span className="text-xs text-slate-500">
-                      Total Family Package Cost ({tripParams.travellers} Travellers)
-                    </span>
-                    <div className="text-2xl font-bold text-slate-900 font-mono-num mt-0.5">
-                      ₹{totalFamilyPackagePrice.toLocaleString('en-IN')}
-                    </div>
-
-                    <div className="mt-4 flex flex-col gap-2">
-                      {onBookPackage && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const normalizedPkg: PackageItem = {
-                              id: pkg.id,
-                              title: pkg.packageTitle,
-                              destination: tripParams.destination,
-                              destinationId: 'dest-tirupati',
-                              duration: pkg.durationLabel,
-                              days: pkg.durationDays,
-                              nights: Math.max(1, pkg.durationDays - 1),
-                              pricePerPerson: pkg.pricePerAdult,
-                              category: pkg.providerType,
-                              coverImage: tourImageUrl,
-                              highlights: pkg.inclusions.slice(0, 4),
-                              inclusions: pkg.inclusions,
-                              exclusions: pkg.exclusions,
-                              dayByDayItinerary: [
-                                { day: 1, title: 'Arrival & Tour Commencement', desc: pkg.transportDetails },
-                                { day: 2, title: 'Sightseeing & Temple Darshan', desc: pkg.darshanDetails },
-                                { day: 3, title: 'Farewell & Scheduled Departure', desc: 'Hotel checkout and scheduled return transfer.' },
-                              ].slice(0, pkg.durationDays),
-                              providerName: pkg.providerName,
-                              cancellationPolicy: pkg.cancellationTerms,
-                            };
-                            onBookPackage(normalizedPkg);
-                          }}
-                          className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#0D4A42] hover:bg-[#09352f] rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-sm cursor-pointer"
-                        >
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span>Book / Submit Enquiry</span>
-                        </button>
-                      )}
-
-                      {onSelectPackage && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const normalizedPkg: PackageItem = {
-                              id: pkg.id,
-                              title: pkg.packageTitle,
-                              destination: tripParams.destination,
-                              destinationId: 'dest-tirupati',
-                              duration: pkg.durationLabel,
-                              days: pkg.durationDays,
-                              nights: Math.max(1, pkg.durationDays - 1),
-                              pricePerPerson: pkg.pricePerAdult,
-                              category: pkg.providerType,
-                              coverImage: tourImageUrl,
-                              highlights: pkg.inclusions.slice(0, 4),
-                              inclusions: pkg.inclusions,
-                              exclusions: pkg.exclusions,
-                              dayByDayItinerary: [
-                                { day: 1, title: 'Arrival & Tour Commencement', desc: pkg.transportDetails },
-                                { day: 2, title: 'Sightseeing & Temple Darshan', desc: pkg.darshanDetails },
-                                { day: 3, title: 'Farewell & Scheduled Departure', desc: 'Hotel checkout and scheduled return transfer.' },
-                              ].slice(0, pkg.durationDays),
-                              providerName: pkg.providerName,
-                              cancellationPolicy: pkg.cancellationTerms,
-                            };
-                            onSelectPackage(normalizedPkg);
-                          }}
-                          className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#0D4A42] border border-[#0D4A42]/40 bg-teal-50/50 hover:bg-teal-50 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>View Full Itinerary Details</span>
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onShortlistBooking({
-                            category: 'Tour Package',
-                            title: `${pkg.packageTitle} (${tripParams.travellers} Pax)`,
-                            provider: pkg.providerName,
-                            status: 'Shortlisted',
-                            totalFamilyCost: totalFamilyPackagePrice,
-                            officialUrl: pkg.officialPackageUrl,
-                            notes: `${pkg.durationLabel} · Adult ₹${pkg.pricePerAdult}, Child ₹${pkg.pricePerChild}`,
-                          });
-                          setAddedPackageKey(pkg.id);
-                          setTimeout(() => setAddedPackageKey(null), 2500);
-                        }}
-                        className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                          addedPackageKey === pkg.id
-                            ? 'bg-emerald-800 text-white'
-                            : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        {addedPackageKey === pkg.id
-                          ? '✓ Added to Ledger!'
-                          : 'Add to Budget Ledger'}
-                      </button>
-
-                      <a
-                        href={pkg.officialPackageUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-1.5 text-[11px] font-medium text-slate-500 hover:text-slate-800 transition-colors whitespace-nowrap shrink-0"
-                      >
-                        <span>Official Portal Reference</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCardClick(dest, pkg);
+                      }}
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-stone-100 group-hover:bg-[#0F1E36] text-slate-800 group-hover:text-white text-xs font-bold transition-all duration-200 cursor-pointer shadow-2xs"
+                    >
+                      <span>View Tour Details</span>
+                      <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                    </button>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* See More / Show Less for Packages */}
-      {filteredPackages.length > PACKAGES_INITIAL_COUNT && (
-        <div className="flex items-center justify-center pt-2">
+            );
+          })}
+        </div>
+      ) : (
+        /* Empty State when Search Query has no matches */
+        <div className="bg-white rounded-3xl border border-stone-200/90 p-12 text-center space-y-4 max-w-md mx-auto my-8 shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto">
+            <Search className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">
+              No tour packages found
+            </h3>
+            <p className="text-xs text-stone-500 mt-1">
+              We couldn&apos;t find any destination packages matching &ldquo;{searchQuery}&rdquo;.
+            </p>
+          </div>
           <button
             type="button"
-            onClick={() => setShowAllPackages(!showAllPackages)}
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-slate-800 text-xs font-bold transition-colors cursor-pointer shadow-xs"
+            onClick={() => setSearchQuery('')}
+            className="px-5 py-2.5 rounded-xl bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold transition-colors cursor-pointer shadow-xs inline-flex items-center gap-1.5"
           >
-            <ChevronDown
-              className={`w-4 h-4 transition-transform duration-200 ${
-                showAllPackages ? 'rotate-180' : ''
-              }`}
-            />
-            <span>
-              {showAllPackages
-                ? 'Show Less'
-                : `See More Packages (${filteredPackages.length - PACKAGES_INITIAL_COUNT} more)`}
-            </span>
+            <X className="w-3.5 h-3.5" />
+            <span>Clear Search</span>
           </button>
         </div>
       )}
-
-      {/* Section 6: Third-Party Provider Adapter & Normalization Registry */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-          <div className="flex items-center gap-2.5">
-            <Database className="w-5 h-5 text-[#0D4A42]" />
-            <div>
-              <h3 className="text-base font-bold text-slate-900">
-                Modular Provider Discovery & Compliance Architecture
-              </h3>
-              <p className="text-xs text-slate-500">
-                Normalizes travel feeds across Rail, Bus, Flight, Hotel, and Tour Operators while strictly respecting robots.txt, rate limits, and CAPTCHA boundaries
-              </p>
-            </div>
-          </div>
-          <span className="text-xs text-slate-500 font-mono-num">
-            {providerAdapters.length} Adapters Registered
-          </span>
-        </div>
-
-        <div className="overflow-x-auto mt-4">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold">
-                <th className="py-2.5 px-3">Adapter Name</th>
-                <th className="py-2.5 px-3">Category</th>
-                <th className="py-2.5 px-3">Server Environment Key</th>
-                <th className="py-2.5 px-3">Active Mode</th>
-                <th className="py-2.5 px-3">Compliance & Normalization Policy</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {providerAdapters.map((adapter) => (
-                <tr key={adapter.id} className="hover:bg-slate-50/70">
-                  <td className="py-3 px-3 font-semibold text-slate-900">
-                    {adapter.providerName}
-                  </td>
-                  <td className="py-3 px-3 text-slate-600">{adapter.category}</td>
-                  <td className="py-3 px-3 font-mono-num text-slate-700">
-                    {adapter.envSecretName}
-                  </td>
-                  <td className="py-3 px-3">
-                    <span
-                      className={
-                        adapter.configured
-                          ? 'text-emerald-800 font-semibold'
-                          : 'text-amber-800 font-medium'
-                      }
-                    >
-                      {adapter.configured ? 'Live API Key Active' : 'Verified Reference Adapter'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-600">{adapter.complianceNote}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 };

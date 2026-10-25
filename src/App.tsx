@@ -58,7 +58,6 @@ import {
   KAKINADA_TO_TIRUPATI_BUSES,
   KAKINADA_TO_TIRUPATI_FLIGHTS,
   TIRUPATI_HOTELS,
-  TIRUPATI_PACKAGES,
   DEFAULT_ITINERARY_DAYS,
   INITIAL_FAMILY_MEMBERS,
   INITIAL_CHAT_MESSAGES,
@@ -235,7 +234,6 @@ export default function App() {
   const [familyDropdownOpen, setFamilyDropdownOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDestination, setSelectedDestination] = useState<PopularDestination | null>(null);
-  const [destinationCategoryFilter, setDestinationCategoryFilter] = useState<string>('All');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
   // See More / Show Less state
@@ -876,12 +874,6 @@ export default function App() {
       navigateAndScroll('transport');
     }
   };
-
-  const filteredDestinations = destinations.filter((d) => {
-    if (destinationCategoryFilter === 'All') return true;
-    return d.category.toLowerCase() === destinationCategoryFilter.toLowerCase();
-  });
-
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900 selection:bg-[#0D9488] selection:text-white">
       {/* Toast Notification */}
@@ -1865,43 +1857,24 @@ export default function App() {
         {/* EXPLORE DESTINATIONS PAGE */}
         {activeSection === 'destinations' && (
           <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <button
-                  type="button"
-                  onClick={() => navigateAndScroll('dashboard')}
-                  className="text-xs font-semibold text-[#0D9488] hover:underline mb-1 block cursor-pointer"
-                >
-                  ← Back to Home
-                </button>
-                <h1 className="text-3xl font-bold text-slate-900 font-serif-display">
-                  Explore Destinations
-                </h1>
-                <p className="text-xs sm:text-sm text-stone-600 mt-1">
-                  Discover verified pilgrimage circuits, hill retreats, coastal getaways, and heritage fortresses.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {['All', 'Pilgrimage', 'Hill Station', 'Coastal & Beach', 'Heritage & Culture', 'Adventure'].map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setDestinationCategoryFilter(cat)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer ${
-                      destinationCategoryFilter === cat
-                        ? 'bg-[#0F1E36] text-white'
-                        : 'bg-white border border-stone-200 text-slate-600 hover:bg-stone-50'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => navigateAndScroll('dashboard')}
+                className="text-xs font-semibold text-[#0D9488] hover:underline mb-1 block cursor-pointer"
+              >
+                ← Back to Home
+              </button>
+              <h1 className="text-3xl font-bold text-slate-900 font-serif-display">
+                Explore Destinations
+              </h1>
+              <p className="text-xs sm:text-sm text-stone-600 mt-1">
+                Discover verified pilgrimage circuits, hill retreats, coastal getaways, and heritage fortresses.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {filteredDestinations.map((dest) => (
+              {destinations.map((dest) => (
                 <div
                   key={dest.id}
                   className="group bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
@@ -1927,14 +1900,7 @@ export default function App() {
                       </p>
                     </div>
 
-                    <div className="space-y-3 pt-3 border-t border-stone-100">
-                      <div className="flex items-center justify-between text-xs text-stone-500">
-                        <span>Best Season</span>
-                        <span className="font-semibold text-slate-800 bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-200/60 font-medium">
-                          {dest.bestSeason}
-                        </span>
-                      </div>
-
+                    <div className="pt-3 border-t border-stone-100">
                       <button
                         type="button"
                         onClick={() => setActiveDestinationModal(dest)}
@@ -1973,23 +1939,12 @@ export default function App() {
         {/* TOUR PACKAGES SECTION */}
         {activeSection === 'packages' && (
           <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('dashboard')}
-              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
-            >
-              ← Back to Home
-            </button>
             <PackagesSection
-              tripParams={tripParams}
-              packages={TIRUPATI_PACKAGES}
-              providerAdapters={providerAdapters}
-              tourImageUrl={chandragiriTourImg}
-              onShortlistBooking={handleShortlistBooking}
+              destinations={destinations}
+              packages={packages}
               onSelectPackage={(pkg) => setActivePackageModal(pkg)}
-              onBookPackage={(pkg) => setActiveBookingModal(pkg)}
-              onToggleWishlist={handleToggleWishlistPkg}
-              wishlist={wishlistPackages}
+              onSelectDestination={(dest) => setActiveDestinationModal(dest)}
+              onNavigateHome={() => navigateAndScroll('dashboard')}
             />
           </div>
         )}
