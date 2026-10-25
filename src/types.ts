@@ -46,6 +46,7 @@ export interface PackageItem {
   title: string;
   destination: string;
   destinationId: string;
+  description?: string;
   duration: string;
   days: number;
   nights: number;

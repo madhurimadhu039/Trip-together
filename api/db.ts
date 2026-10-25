@@ -40,6 +40,7 @@ export interface TourPackageRecord {
   pricePerPerson: number;
   originalPrice?: number;
   category: string;
+  description?: string;
   coverImage: string;
   highlights: string[];
   inclusions: string[];

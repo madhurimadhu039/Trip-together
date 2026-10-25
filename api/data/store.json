@@ -248,7 +248,8 @@
       "providerName": "Trip Together Verified Pilgrimage Partner",
       "cancellationPolicy": "Free cancellation up to 48 hours prior to journey. 50% refund within 24–48 hours.",
       "published": true,
-      "featured": true
+      "featured": true,
+      "description": "Embark on a sacred spiritual pilgrimage to Tirumala Venkateswara Temple and the historic Chandragiri Fort. Enjoy seamless darshan guidance, comfortable sanitized family accommodations, and hassle-free private transfers."
     },
     {
       "id": "pkg-goa-coastal",
@@ -304,7 +305,8 @@
       "providerName": "Goa Horizon Experiences",
       "cancellationPolicy": "Full refund if cancelled 7 days in advance. 70% refund up to 3 days in advance.",
       "published": true,
-      "featured": true
+      "featured": true,
+      "description": "Experience the quintessential charm of Goa with beachfront resort relaxation, an enchanting Mandovi sunset cruise, authentic Goan spice plantation delicacies, and guided heritage walks through Old Goa and Fontainhas."
     },
     {
       "id": "pkg-jaipur-royals",
@@ -359,7 +361,8 @@
       "providerName": "Rajputana Heritage Journeys",
       "cancellationPolicy": "Free cancellation up to 5 days prior to arrival.",
       "published": true,
-      "featured": true
+      "featured": true,
+      "description": "Immerse yourself in regal Rajasthan with guided explorations of Amber Fort and City Palace, picturesque photo stops at Hawa Mahal and Jal Mahal, bustling local craft bazaars, and an authentic cultural dinner at Chokhi Dhani."
     },
     {
       "id": "pkg-kerala-backwaters",
@@ -419,7 +422,8 @@
       "providerName": "Kerala Serenity Voyages",
       "cancellationPolicy": "Free cancellation up to 7 days prior to check-in.",
       "published": true,
-      "featured": true
+      "featured": true,
+      "description": "Discover the lush tranquility of God’s Own Country with mist-kissed tea gardens in Munnar, wildlife sightings at Periyar Sanctuary in Thekkady, and an unforgettable private houseboat cruise through Alleppey backwaters."
     },
     {
       "id": "pkg-manali-snow",
@@ -474,7 +478,8 @@
       "providerName": "Himalayan Highs Expeditions",
       "cancellationPolicy": "Free cancellation up to 5 days prior to arrival.",
       "published": true,
-      "featured": true
+      "featured": true,
+      "description": "Escape to the snow-crowned peaks of Himachal Pradesh. Experience high-altitude thrill at Solang Valley, an iconic drive through Atal Tunnel, peaceful moments at Hadimba Temple, and rejuvenating hot springs in Vashisht."
     },
     {
       "id": "pkg-varanasi-spirit",
@@ -524,7 +529,8 @@
       "providerName": "Banaras Sacred Heritage Walks",
       "cancellationPolicy": "Free cancellation up to 3 days before travel.",
       "published": true,
-      "featured": true
+      "featured": true,
+      "description": "Witness the eternal spiritual rhythm of Varanasi with prime VIP boat viewing of the evening Ganga Maha Aarti, peaceful sunrise boat rides along ancient ghats, a guided visit to Kashi Vishwanath, and serene Sarnath stupas."
     }
   ],
   "guides": [

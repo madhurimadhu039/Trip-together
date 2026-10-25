@@ -103,6 +103,17 @@ export const PackageDetailModal: React.FC<PackageDetailModalProps> = ({
             </button>
           </div>
 
+          {/* Description / Overview */}
+          <div>
+            <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
+              Tour Overview
+            </h3>
+            <p className="text-sm text-slate-700 leading-relaxed bg-stone-50/70 p-3.5 rounded-xl border border-stone-200/80">
+              {packageItem.description ||
+                `Embark on an unforgettable travel experience to ${packageItem.destination} with this curated ${packageItem.duration} ${packageItem.category.toLowerCase()} journey. Includes verified accommodations, certified local guidance, and transparent day-by-day itineraries.`}
+            </p>
+          </div>
+
           {/* Highlights */}
           {packageItem.highlights.length > 0 && (
             <div>

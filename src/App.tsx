@@ -26,7 +26,6 @@ import {
   LogOut,
   X,
   Menu,
-  Heart,
   Star,
   Eye,
   EyeOff,
@@ -1644,84 +1643,37 @@ export default function App() {
                   {(showAllPackages ? packages : packages.slice(0, PACKAGES_INITIAL_COUNT)).map((pkg) => (
                     <div
                       key={pkg.id}
-                      className="bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+                      className="group bg-white rounded-3xl overflow-hidden border border-stone-200/90 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
                     >
-                      <div className="relative h-52 overflow-hidden">
+                      {/* Clickable Image Area */}
+                      <button
+                        type="button"
+                        onClick={() => setActivePackageModal(pkg)}
+                        aria-label={`View tour details for ${pkg.title}`}
+                        className="relative h-56 sm:h-60 w-full overflow-hidden block text-left cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#0D9488]"
+                      >
                         <img
                           src={pkg.coverImage}
-                          alt={pkg.title}
-                          className="w-full h-full object-cover"
+                          alt={`${pkg.title} - ${pkg.destination}`}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity" />
+                      </button>
 
-                        <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-bold">
-                          {pkg.duration}
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={() => handleToggleWishlistPkg(pkg.id)}
-                          aria-label={`Save ${pkg.title} to wishlist`}
-                          className="absolute top-3 right-3 p-1.5 rounded-full bg-white/80 backdrop-blur-xs hover:bg-white text-rose-500 shadow-xs transition-colors cursor-pointer"
-                        >
-                          <Heart
-                            className={`w-4 h-4 ${
-                              wishlistPackages.includes(pkg.id)
-                                ? 'fill-rose-500 text-rose-500'
-                                : 'text-slate-400'
-                            }`}
-                          />
-                        </button>
-
-                        <div className="absolute bottom-3 left-3.5 right-3.5 text-white">
-                          <span className="text-[11px] text-teal-300 font-semibold">{pkg.destination}</span>
-                          <h3 className="text-base font-bold font-serif-display drop-shadow-sm leading-tight mt-0.5">
+                      {/* Package Name and Destination */}
+                      <div className="p-5 flex-1 flex flex-col justify-between">
+                        <div>
+                          <p className="text-xs text-stone-500 flex items-center gap-1.5 mb-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-[#0D9488] shrink-0" />
+                            <span className="font-medium text-stone-600">{pkg.destination}</span>
+                          </p>
+                          <h3
+                            onClick={() => setActivePackageModal(pkg)}
+                            className="text-lg font-bold text-slate-900 group-hover:text-[#0D9488] font-serif-display transition-colors leading-snug cursor-pointer"
+                          >
                             {pkg.title}
                           </h3>
-                        </div>
-                      </div>
-
-                      <div className="p-5 space-y-4 flex-1 flex flex-col justify-between">
-                        <div className="space-y-2">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 block">
-                            Key Highlights:
-                          </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {pkg.highlights.slice(0, 3).map((h) => (
-                              <span
-                                key={h}
-                                className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 text-[11px]"
-                              >
-                                {h}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="pt-3 border-t border-stone-100 flex items-center justify-between">
-                          <div>
-                            <span className="text-[11px] text-stone-400 block">Price Per Person</span>
-                            <div className="text-xl font-bold text-slate-900 font-mono-num">
-                              ₹{pkg.pricePerPerson.toLocaleString('en-IN')}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setActivePackageModal(pkg)}
-                              className="px-3 py-2 rounded-xl border border-stone-300 text-xs font-semibold text-slate-700 hover:bg-stone-50 transition-colors cursor-pointer"
-                            >
-                              Details
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setActiveBookingModal(pkg)}
-                              className="px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-                            >
-                              Book Now
-                            </button>
-                          </div>
                         </div>
                       </div>
                     </div>
