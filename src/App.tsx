@@ -1934,64 +1934,6 @@ export default function App() {
                 )}
               </section>
 
-              {/* HOW TRIP TOGETHER WORKS */}
-              <section className="bg-white rounded-3xl border border-stone-200/90 p-8 sm:p-12 shadow-xs space-y-8">
-                <div className="text-center max-w-xl mx-auto space-y-2">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0D9488] text-xs font-semibold">
-                    <Compass className="w-3.5 h-3.5" />
-                    <span>Seamless Journey Flow</span>
-                  </div>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif-display">
-                    How Trip Together Works
-                  </h2>
-                  <p className="text-xs sm:text-sm text-stone-600">
-                    A thoughtfully engineered 4-step workflow for modern family and group travel
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative">
-                  <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#0F1E36] text-teal-300 font-mono-num font-bold flex items-center justify-center text-sm">
-                      01
-                    </div>
-                    <h3 className="text-base font-bold text-slate-900">Discover</h3>
-                    <p className="text-xs text-stone-600 leading-relaxed">
-                      Search curated destinations, compare authentic train, bus, and flight connections, and explore verified tour packages.
-                    </p>
-                  </div>
-
-                  <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#0F1E36] text-teal-300 font-mono-num font-bold flex items-center justify-center text-sm">
-                      02
-                    </div>
-                    <h3 className="text-base font-bold text-slate-900">Plan</h3>
-                    <p className="text-xs text-stone-600 leading-relaxed">
-                      Build and reorder custom day-by-day itineraries, generate AI recommendations, and calculate transparent budget breakdowns.
-                    </p>
-                  </div>
-
-                  <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#0F1E36] text-teal-300 font-mono-num font-bold flex items-center justify-center text-sm">
-                      03
-                    </div>
-                    <h3 className="text-base font-bold text-slate-900">Connect</h3>
-                    <p className="text-xs text-stone-600 leading-relaxed">
-                      Message certified local tour guides, coordinate with private family group chat, and assign items on shared packing checklists.
-                    </p>
-                  </div>
-
-                  <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#0F1E36] text-teal-300 font-mono-num font-bold flex items-center justify-center text-sm">
-                      04
-                    </div>
-                    <h3 className="text-base font-bold text-slate-900">Travel</h3>
-                    <p className="text-xs text-stone-600 leading-relaxed">
-                      Submit genuine booking inquiries, track consent-based route GPS, export offline PDF schedules, and travel with total peace of mind.
-                    </p>
-                  </div>
-                </div>
-              </section>
-
               {/* WHY CHOOSE TRIP TOGETHER */}
               <section className="space-y-8">
                 <div className="text-center max-w-xl mx-auto space-y-2">
@@ -2067,60 +2009,6 @@ export default function App() {
                       Cross-referenced against official state tourism guidelines and direct official portals without inventing false claims.
                     </p>
                   </div>
-                </div>
-              </section>
-
-              {/* REVIEWS AND TESTIMONIALS */}
-              <section className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                  <div>
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold mb-2">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span>Genuine Community Voices</span>
-                    </div>
-                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif-display">
-                      Verified Traveller Feedback
-                    </h2>
-                    <p className="text-xs sm:text-sm text-stone-600 mt-1">
-                      Real reviews from families and groups who traveled using Trip Together
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setWriteReviewModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-slate-800 text-xs font-bold transition-colors cursor-pointer shadow-xs shrink-0"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 text-[#0D9488]" />
-                    <span>Write a Review</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {reviews.slice(0, 4).map((rev) => (
-                    <div
-                      key={rev.id}
-                      className="bg-white rounded-2xl border border-stone-200/90 p-6 space-y-3 shadow-xs"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          {[...Array(rev.rating)].map((_, i) => (
-                            <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                          ))}
-                        </div>
-                        <span className="text-[11px] text-stone-400">{rev.date}</span>
-                      </div>
-
-                      <p className="text-xs sm:text-sm text-slate-700 leading-relaxed italic">
-                        "{rev.comment}"
-                      </p>
-
-                      <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-900">{rev.authorName}</span>
-                        <span className="text-stone-400">{rev.location}</span>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </section>
 
