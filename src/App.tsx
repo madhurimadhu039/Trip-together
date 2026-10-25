@@ -1514,10 +1514,6 @@ export default function App() {
               <section id="destinations-section" className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0D9488] text-xs font-semibold mb-2">
-                      <Compass className="w-3.5 h-3.5" />
-                      <span>Curated India &amp; Beyond</span>
-                    </div>
                     <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif-display">
                       Popular Destinations
                     </h2>
@@ -1525,31 +1521,13 @@ export default function App() {
                       Explore handpicked destinations with genuine travel insights, best visiting seasons, and certified local guides.
                     </p>
                   </div>
-
-                  {/* Category Filter Pills */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                    {['All', 'Pilgrimage', 'Hill Station', 'Coastal & Beach', 'Heritage & Culture', 'Adventure'].map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => { setDestinationCategoryFilter(cat); setShowAllDestinations(false); }}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                          destinationCategoryFilter === cat
-                            ? 'bg-[#0F1E36] text-white shadow-xs'
-                            : 'bg-white border border-stone-200 text-slate-600 hover:bg-stone-50'
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 {/* Destinations Grid */}
                 {(() => {
                   const visibleDests = showAllDestinations
-                    ? filteredDestinations
-                    : filteredDestinations.slice(0, DESTINATIONS_INITIAL_COUNT);
+                    ? destinations
+                    : destinations.slice(0, DESTINATIONS_INITIAL_COUNT);
                   return (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1566,10 +1544,6 @@ export default function App() {
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity" />
-
-                              <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-slate-900/75 backdrop-blur-xs text-white text-[11px] font-semibold tracking-wide shadow-xs">
-                                {dest.category}
-                              </span>
                             </div>
 
                             <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
@@ -1607,17 +1581,17 @@ export default function App() {
 
                       {/* See More / Show Less / View All */}
                       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                        {filteredDestinations.length > DESTINATIONS_INITIAL_COUNT && !showAllDestinations && (
+                        {destinations.length > DESTINATIONS_INITIAL_COUNT && !showAllDestinations && (
                           <button
                             type="button"
                             onClick={() => setShowAllDestinations(true)}
                             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-slate-800 text-xs font-bold transition-colors cursor-pointer shadow-xs"
                           >
                             <ChevronDown className="w-4 h-4" />
-                            See More ({filteredDestinations.length - DESTINATIONS_INITIAL_COUNT} more)
+                            See More ({destinations.length - DESTINATIONS_INITIAL_COUNT} more)
                           </button>
                         )}
-                        {showAllDestinations && filteredDestinations.length > DESTINATIONS_INITIAL_COUNT && (
+                        {showAllDestinations && destinations.length > DESTINATIONS_INITIAL_COUNT && (
                           <button
                             type="button"
                             onClick={() => setShowAllDestinations(false)}
@@ -2001,10 +1975,6 @@ export default function App() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity" />
-
-                    <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-slate-900/75 backdrop-blur-xs text-white text-[11px] font-semibold tracking-wide shadow-xs">
-                      {dest.category}
-                    </span>
                   </div>
 
                   <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
