@@ -127,7 +127,9 @@ const AutocompleteLocationInput: React.FC<{
   onChange: (val: string) => void;
   placeholder: string;
   id: string;
-}> = ({ label, value, onChange, placeholder, id }) => {
+  hasError?: boolean;
+  errorMessage?: string;
+}> = ({ label, value, onChange, placeholder, id, hasError, errorMessage }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<PopularDestination[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -168,9 +170,19 @@ const AutocompleteLocationInput: React.FC<{
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all"
+          className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-900 transition-all ${
+            hasError
+              ? 'bg-rose-50/40 border border-rose-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/20'
+              : 'bg-stone-50 border border-stone-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488]'
+          }`}
         />
       </div>
+      {errorMessage && (
+        <p className="text-[11px] text-rose-600 mt-1 font-medium flex items-center gap-1">
+          <AlertCircle className="w-3 h-3 shrink-0" />
+          <span>{errorMessage}</span>
+        </p>
+      )}
 
       {isOpen && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-stone-200 rounded-2xl shadow-xl z-50 overflow-hidden">
@@ -255,10 +267,13 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
 
   // Validation & UI State
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [attractionError, setAttractionError] = useState<string | null>(null);
   const [planGenerated, setPlanGenerated] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const itineraryRef = useRef<HTMLDivElement>(null);
+  const prevDestinationRef = useRef<string>(destination);
 
   // Sync to parent tripParams when inputs change
   useEffect(() => {
@@ -317,12 +332,15 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
     ];
   }, [destination]);
 
-  // Default select first 3 attractions when destination changes and none selected
+  // Only pre-populate suggested attractions when destination changes to a new non-empty destination
   useEffect(() => {
-    if (availableAttractions.length > 0 && selectedAttractions.length === 0) {
+    const cleanDest = destination.trim().toLowerCase();
+    const prevClean = prevDestinationRef.current.trim().toLowerCase();
+    if (cleanDest && cleanDest !== prevClean && availableAttractions.length > 0) {
       setSelectedAttractions(availableAttractions.slice(0, 3));
     }
-  }, [availableAttractions]);
+    prevDestinationRef.current = destination;
+  }, [destination, availableAttractions]);
 
   // Corridor route metrics calculation
   const distanceKm = useMemo(() => {
@@ -396,14 +414,21 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
     };
   }, [distanceKm, transportMode, travellers]);
 
-  // Add custom attraction handler
-  const handleAddCustomAttraction = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Add custom attraction handler — handles input, duplicates, empty entries
+  const handleAddCustomAttraction = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const trimmed = customAttractionInput.trim();
-    if (trimmed && !selectedAttractions.includes(trimmed)) {
-      setSelectedAttractions((prev) => [...prev, trimmed]);
-      setCustomAttractionInput('');
+    if (!trimmed) {
+      setAttractionError('Please enter a place or attraction name to add.');
+      return;
     }
+    if (selectedAttractions.some((p) => p.toLowerCase() === trimmed.toLowerCase())) {
+      setAttractionError(`"${trimmed}" is already in your selected places list.`);
+      return;
+    }
+    setSelectedAttractions((prev) => [...prev, trimmed]);
+    setCustomAttractionInput('');
+    setAttractionError(null);
   };
 
   // Remove attraction handler
@@ -420,7 +445,7 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
     }
   };
 
-  // Calculate Budget Items
+  // Calculate Budget Items (live updates when places or selections change)
   const transportationExpense = transportMetrics?.totalGroupCost || 0;
   const accommodationExpense = calculatedNights * hotelBudgetPerNight;
   const foodExpense = calculatedNights * travellers * dailyFoodEstimate;
@@ -429,35 +454,66 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
     transportationExpense + accommodationExpense + foodExpense + sightseeingExpense;
   const remainingBudget = totalBudget - totalEstimatedCost;
 
-  // Generate Itinerary Handler
-  const handleGeneratePlan = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Generate Itinerary Handler — validates required fields and distributes all places
+  const handleGeneratePlan = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const errors: string[] = [];
+    const newFieldErrors: Record<string, string> = {};
 
-    if (!pickup.trim()) errors.push('Please enter a pickup location.');
-    if (!destination.trim()) errors.push('Please enter a destination.');
-    if (!departureDate) errors.push('Please select a departure date.');
-    if (!returnDate) errors.push('Please select a return date.');
+    const cleanPickup = pickup.trim();
+    const cleanDestination = destination.trim();
 
-    if (departureDate && departureDate < todayStr) {
+    if (!cleanPickup) {
+      errors.push('Please enter a pickup location.');
+      newFieldErrors.pickup = 'Pickup location is required.';
+    }
+    if (!cleanDestination) {
+      errors.push('Please enter a destination.');
+      newFieldErrors.destination = 'Destination is required.';
+    }
+    if (!departureDate) {
+      errors.push('Please select a departure date.');
+      newFieldErrors.departureDate = 'Departure date is required.';
+    } else if (departureDate < todayStr) {
       errors.push('Departure date cannot be in the past.');
+      newFieldErrors.departureDate = 'Departure date cannot be in the past.';
     }
-    if (departureDate && returnDate && returnDate < departureDate) {
+
+    if (!returnDate) {
+      errors.push('Please select a return date.');
+      newFieldErrors.returnDate = 'Return date is required.';
+    } else if (departureDate && returnDate < departureDate) {
       errors.push('Return date cannot be earlier than departure date.');
+      newFieldErrors.returnDate = 'Return date cannot be earlier than departure date.';
     }
+
+    if (!travellers || travellers < 1) {
+      errors.push('Number of travellers must be at least 1.');
+      newFieldErrors.travellers = 'Traveller count must be at least 1.';
+    }
+
+    setFieldErrors(newFieldErrors);
 
     if (errors.length > 0) {
       setValidationErrors(errors);
+      setPlanGenerated(false);
+      setTimeout(() => {
+        const errorCard =
+          document.getElementById('planner-validation-banner') ||
+          document.getElementById('pickup-location');
+        errorCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
       return;
     }
 
     setValidationErrors([]);
+    setFieldErrors({});
 
-    // Generate day-by-day itinerary
+    // Generate day-by-day itinerary incorporating actual user selections
     const totalDays = calculatedNights + 1;
     const days: ItineraryDay[] = [];
-
-    const attractionsPerDay = Math.max(1, Math.ceil(selectedAttractions.length / Math.max(1, totalDays - 1)));
+    const attractionsPool = [...selectedAttractions];
+    const totalSelected = selectedAttractions.length;
 
     for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
       const curDate = new Date(departureDate);
@@ -475,72 +531,78 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
         dayActivities.push({
           id: `act-${dayNum}-1`,
           timeSlot: '08:00 AM',
-          placeName: `Departure from ${pickup}`,
+          placeName: `Departure from ${cleanPickup}`,
           category: 'Transit',
-          description: `Begin journey from ${pickup} to ${destination} via selected ${transportMode}.`,
+          description: `Begin journey from ${cleanPickup} to ${cleanDestination} via selected ${transportMode}.`,
           distanceFromPrevKm: 0,
           travelTimeMinutes: 60,
           localTransportMode: transportMode,
           estimatedTransportCostFamily: Math.round(transportationExpense / 2),
           estimatedFoodOrTicketCostFamily: travellers * 150,
-          verifiedNotes: 'Keep identity cards and booking confirmations handy.',
+          verifiedNotes: 'Keep government ID proofs and booking confirmations handy.',
         });
 
         dayActivities.push({
           id: `act-${dayNum}-2`,
           timeSlot: '02:00 PM',
-          placeName: `Check-in at ${destination} ${accommodationType}`,
+          placeName: `Check-in at ${cleanDestination} ${accommodationType}`,
           category: 'Check-in / Check-out',
-          description: `Arrive in ${destination}, complete check-in, unpack and refresh.`,
+          description: `Arrive in ${cleanDestination}, complete check-in at ${accommodationType}, refresh and unpack.`,
           distanceFromPrevKm: 5,
           travelTimeMinutes: 20,
           localTransportMode: 'Auto / Cab',
           estimatedTransportCostFamily: 200,
           estimatedFoodOrTicketCostFamily: 0,
-          verifiedNotes: `Standard check-in time: 12:00 PM – 02:00 PM. Budget: ₹${hotelBudgetPerNight}/night.`,
+          verifiedNotes: `Standard check-in time: 12:00 PM – 02:00 PM. Budget: ₹${hotelBudgetPerNight.toLocaleString('en-IN')}/night.`,
         });
 
         // Evening attraction on Day 1 if available
-        if (selectedAttractions.length > 0) {
+        const eveningPlace =
+          attractionsPool.length > 0
+            ? attractionsPool.shift()!
+            : totalSelected === 0
+            ? `${cleanDestination} Central Promenade`
+            : null;
+        if (eveningPlace) {
           dayActivities.push({
             id: `act-${dayNum}-3`,
             timeSlot: '05:30 PM',
-            placeName: selectedAttractions[0],
+            placeName: eveningPlace,
             category: 'Heritage & Sightseeing',
-            description: `Evening exploration and sunset stroll at ${selectedAttractions[0]}.`,
+            description: `Evening exploration, sightseeing, and sunset stroll at ${eveningPlace}.`,
             distanceFromPrevKm: 4,
             travelTimeMinutes: 25,
             localTransportMode: 'Local Transit',
             estimatedTransportCostFamily: 150,
             estimatedFoodOrTicketCostFamily: travellers * 200,
-            verifiedNotes: 'Comfortable footwear recommended.',
+            verifiedNotes: 'Comfortable walking shoes recommended.',
           });
         }
       } else if (dayNum === totalDays) {
-        // Final Day: Morning sightseeing, Check-out & Return Journey
-        if (selectedAttractions.length >= totalDays) {
-          const lastAttraction = selectedAttractions[selectedAttractions.length - 1];
+        // Final Day: Morning Sightseeing, Check-out & Return Journey
+        const morningPlace = attractionsPool.length > 0 ? attractionsPool.shift()! : null;
+        if (morningPlace) {
           dayActivities.push({
             id: `act-${dayNum}-1`,
             timeSlot: '09:00 AM',
-            placeName: lastAttraction,
+            placeName: morningPlace,
             category: 'Heritage & Sightseeing',
-            description: `Morning visit to ${lastAttraction} and local shopping for souvenirs.`,
+            description: `Morning visit to ${morningPlace} and local handicraft souvenir shopping.`,
             distanceFromPrevKm: 3,
             travelTimeMinutes: 15,
             localTransportMode: 'Local Transit',
             estimatedTransportCostFamily: 120,
             estimatedFoodOrTicketCostFamily: travellers * 250,
-            verifiedNotes: 'Local markets usually open by 09:30 AM.',
+            verifiedNotes: 'Morning hours offer great photo opportunities and fewer crowds.',
           });
         }
 
         dayActivities.push({
           id: `act-${dayNum}-2`,
           timeSlot: '12:00 PM',
-          placeName: `Check-out from ${destination} ${accommodationType}`,
+          placeName: `Check-out from ${cleanDestination} ${accommodationType}`,
           category: 'Check-in / Check-out',
-          description: `Pack luggage, clear accommodation bills, and head towards transit departure hub.`,
+          description: `Pack bags, settle accommodation room bills, and prepare for return transit.`,
           distanceFromPrevKm: 4,
           travelTimeMinutes: 20,
           localTransportMode: 'Cab / Auto',
@@ -552,9 +614,9 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
         dayActivities.push({
           id: `act-${dayNum}-3`,
           timeSlot: '04:00 PM',
-          placeName: `Return Journey to ${pickup}`,
+          placeName: `Return Journey to ${cleanPickup}`,
           category: 'Transit',
-          description: `Depart ${destination} for return travel back to ${pickup} via ${transportMode}.`,
+          description: `Depart ${cleanDestination} for return travel back to ${cleanPickup} via ${transportMode}.`,
           distanceFromPrevKm: distanceKm || 150,
           travelTimeMinutes: 120,
           localTransportMode: transportMode,
@@ -564,32 +626,31 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
         });
       } else {
         // Middle Days: Visit selected attractions
-        const startIndex = (dayNum - 2) * attractionsPerDay + 1;
-        const dayAttractions = selectedAttractions.slice(startIndex, startIndex + attractionsPerDay);
-
-        const morningPlace = dayAttractions[0] || `${destination} Local Discovery Point`;
-        const eveningPlace = dayAttractions[1] || `${destination} Cultural & Culinary Center`;
+        const morningPlace =
+          attractionsPool.length > 0 ? attractionsPool.shift()! : `${cleanDestination} Landmark`;
+        const eveningPlace =
+          attractionsPool.length > 0 ? attractionsPool.shift()! : `${cleanDestination} Cultural Center`;
 
         dayActivities.push({
           id: `act-${dayNum}-1`,
           timeSlot: '09:30 AM',
           placeName: morningPlace,
           category: 'Heritage & Sightseeing',
-          description: `Guided visit to ${morningPlace}. Explore architecture, heritage, and scenic spots.`,
+          description: `Guided visit to ${morningPlace}. Explore architecture, heritage, and key attractions.`,
           distanceFromPrevKm: 6,
           travelTimeMinutes: 25,
           localTransportMode: 'Local Auto / Cab',
           estimatedTransportCostFamily: 180,
           estimatedFoodOrTicketCostFamily: travellers * 200,
-          verifiedNotes: 'Carry water and verify entrance ticket counters.',
+          verifiedNotes: 'Carry water bottle and verify entrance timings.',
         });
 
         dayActivities.push({
           id: `act-${dayNum}-2`,
           timeSlot: '01:00 PM',
-          placeName: `Traditional Lunch in ${destination}`,
+          placeName: `Traditional Lunch in ${cleanDestination}`,
           category: 'Meals & Rest',
-          description: `Enjoy authentic regional cuisine and family dining.`,
+          description: `Enjoy authentic regional cuisine, refreshments, and family rest window.`,
           distanceFromPrevKm: 2,
           travelTimeMinutes: 10,
           localTransportMode: 'Walking',
@@ -598,12 +659,30 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
           verifiedNotes: 'Clean, family-friendly verified restaurant.',
         });
 
+        // If user added more places, add an afternoon visit
+        if (attractionsPool.length > totalDays - dayNum) {
+          const afternoonPlace = attractionsPool.shift()!;
+          dayActivities.push({
+            id: `act-${dayNum}-extra`,
+            timeSlot: '03:15 PM',
+            placeName: afternoonPlace,
+            category: 'Heritage & Sightseeing',
+            description: `Afternoon tour and discovery at ${afternoonPlace}.`,
+            distanceFromPrevKm: 4,
+            travelTimeMinutes: 20,
+            localTransportMode: 'Auto / Cab',
+            estimatedTransportCostFamily: 120,
+            estimatedFoodOrTicketCostFamily: travellers * 150,
+            verifiedNotes: 'Scenic photo spot.',
+          });
+        }
+
         dayActivities.push({
           id: `act-${dayNum}-3`,
-          timeSlot: '04:30 PM',
+          timeSlot: '05:30 PM',
           placeName: eveningPlace,
           category: 'Heritage & Sightseeing',
-          description: `Relaxing sunset visit to ${eveningPlace} followed by evening stroll.`,
+          description: `Relaxing sunset visit to ${eveningPlace} followed by local market exploration.`,
           distanceFromPrevKm: 5,
           travelTimeMinutes: 20,
           localTransportMode: 'Local Transit',
@@ -618,41 +697,99 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
         dateLabel,
         title:
           dayNum === 1
-            ? `Arrival & Journey to ${destination}`
+            ? `Arrival & Journey to ${cleanDestination}`
             : dayNum === totalDays
-            ? `Farewell & Return to ${pickup}`
-            : `Exploring ${destination} Highlights`,
-        accommodationName: `${destination} ${accommodationType} (Budget ~₹${hotelBudgetPerNight}/night)`,
+            ? `Farewell & Return to ${cleanPickup}`
+            : `Exploring ${cleanDestination} Highlights`,
+        accommodationName: `${cleanDestination} ${accommodationType} (Budget ~₹${hotelBudgetPerNight.toLocaleString('en-IN')}/night)`,
         accommodationNightCostTotal: dayNum === totalDays ? 0 : hotelBudgetPerNight,
         activities: dayActivities,
       });
     }
 
+    // Ensure any remaining attractions in the pool are included in the itinerary
+    while (attractionsPool.length > 0) {
+      const extraPlace = attractionsPool.shift()!;
+      const targetDay = days.length > 2 ? days[1] : days[0];
+      targetDay.activities.splice(targetDay.activities.length - 1, 0, {
+        id: `act-extra-${Date.now()}-${attractionsPool.length}`,
+        timeSlot: '04:15 PM',
+        placeName: extraPlace,
+        category: 'Heritage & Sightseeing',
+        description: `Explore ${extraPlace} and surrounding local highlights.`,
+        distanceFromPrevKm: 3,
+        travelTimeMinutes: 15,
+        localTransportMode: 'Local Transit',
+        estimatedTransportCostFamily: 100,
+        estimatedFoodOrTicketCostFamily: travellers * 150,
+        verifiedNotes: 'Custom attraction added to trip itinerary.',
+      });
+    }
+
     setItineraryDays(days);
     setPlanGenerated(true);
+    setToastMessage(`Trip plan for ${cleanPickup} ➔ ${cleanDestination} generated!`);
+    setTimeout(() => setToastMessage(null), 3000);
 
     setTimeout(() => {
       itineraryRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+    }, 150);
   };
 
-  // Reset Plan Handler
+  // Reset Plan Handler — clears fields, preferences, attractions, itinerary, and errors
   const handleResetPlan = () => {
+    // If a plan was already generated and details exist, confirm with user
+    if (planGenerated && (pickup || destination || selectedAttractions.length > 0)) {
+      const proceed = window.confirm(
+        'Reset this trip plan? All entered details and the generated itinerary will be cleared.'
+      );
+      if (!proceed) return;
+    }
+
     setPickup('');
     setDestination('');
     setDepartureDate(todayStr);
-    setReturnDate('');
+    const d = new Date(todayStr);
+    d.setDate(d.getDate() + 2);
+    setReturnDate(d.toISOString().split('T')[0]);
     setTravellers(2);
     setTransportMode('Train');
     setAccommodationType('Hotel');
     setHotelBudgetPerNight(2000);
     setSelectedAttractions([]);
     setCustomAttractionInput('');
+    setAttractionError(null);
     setTotalBudget(25000);
     setValidationErrors([]);
+    setFieldErrors({});
     setPlanGenerated(false);
     setItineraryDays([]);
-    setToastMessage('Trip planner reset successfully.');
+
+    if (setTripParams) {
+      setTripParams({
+        origin: '',
+        destination: '',
+        travelDate: todayStr,
+        urgency: 'scheduled',
+        travellers: 2,
+        adults: 2,
+        children: 0,
+        seniors: 0,
+        nights: 2,
+        rooms: 1,
+        totalBudget: 25000,
+        hotelBudgetAmount: 2000,
+        hotelBudgetMode: 'per_room_per_night',
+        preferredTransport: 'all',
+        packagePreference: 'compare_both',
+      });
+    }
+
+    try {
+      localStorage.removeItem('triptogether_itinerary_v1');
+    } catch {}
+
+    setToastMessage('Trip planner reset successfully. Ready to plan a new trip!');
     setTimeout(() => setToastMessage(null), 3000);
   };
 
@@ -720,8 +857,11 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
             onChange={(val) => {
               setPickup(val);
               setValidationErrors([]);
+              setFieldErrors((prev) => ({ ...prev, pickup: '' }));
             }}
             placeholder="Enter pickup location"
+            hasError={!!fieldErrors.pickup}
+            errorMessage={fieldErrors.pickup}
           />
 
           {/* Destination */}
@@ -732,8 +872,11 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
             onChange={(val) => {
               setDestination(val);
               setValidationErrors([]);
+              setFieldErrors((prev) => ({ ...prev, destination: '' }));
             }}
             placeholder="Enter destination"
+            hasError={!!fieldErrors.destination}
+            errorMessage={fieldErrors.destination}
           />
         </div>
 
@@ -755,10 +898,21 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
                     setReturnDate(e.target.value);
                   }
                   setValidationErrors([]);
+                  setFieldErrors((prev) => ({ ...prev, departureDate: '' }));
                 }}
-                className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all cursor-pointer"
+                className={`w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-900 transition-all cursor-pointer ${
+                  fieldErrors.departureDate
+                    ? 'bg-rose-50/40 border border-rose-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/20'
+                    : 'bg-stone-50 border border-stone-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488]'
+                }`}
               />
             </div>
+            {fieldErrors.departureDate && (
+              <p className="text-[11px] text-rose-600 mt-1 font-medium flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                <span>{fieldErrors.departureDate}</span>
+              </p>
+            )}
           </div>
 
           {/* Return Date */}
@@ -775,23 +929,41 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
                 onChange={(e) => {
                   setReturnDate(e.target.value);
                   setValidationErrors([]);
+                  setFieldErrors((prev) => ({ ...prev, returnDate: '' }));
                 }}
-                className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all cursor-pointer"
+                className={`w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-900 transition-all cursor-pointer ${
+                  fieldErrors.returnDate
+                    ? 'bg-rose-50/40 border border-rose-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/20'
+                    : 'bg-stone-50 border border-stone-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488]'
+                }`}
               />
             </div>
+            {fieldErrors.returnDate && (
+              <p className="text-[11px] text-rose-600 mt-1 font-medium flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                <span>{fieldErrors.returnDate}</span>
+              </p>
+            )}
           </div>
 
           {/* Number of Travellers */}
           <div>
             <label htmlFor="traveller-count" className="block text-xs font-bold text-slate-700 mb-1.5">
-              Number of Travellers
+              Number of Travellers <span className="text-rose-500">*</span>
             </label>
             <div className="flex items-center gap-2">
               <select
                 id="traveller-count"
                 value={travellers}
-                onChange={(e) => setTravellers(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all cursor-pointer"
+                onChange={(e) => {
+                  setTravellers(Number(e.target.value));
+                  setFieldErrors((prev) => ({ ...prev, travellers: '' }));
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-900 transition-all cursor-pointer ${
+                  fieldErrors.travellers
+                    ? 'bg-rose-50/40 border border-rose-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/20'
+                    : 'bg-stone-50 border border-stone-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488]'
+                }`}
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20].map((num) => (
                   <option key={num} value={num}>
@@ -800,6 +972,12 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
                 ))}
               </select>
             </div>
+            {fieldErrors.travellers && (
+              <p className="text-[11px] text-rose-600 mt-1 font-medium flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                <span>{fieldErrors.travellers}</span>
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -1013,22 +1191,39 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
         )}
 
         {/* Add Custom Place Input */}
-        <form onSubmit={handleAddCustomAttraction} className="flex gap-2 pt-1">
-          <input
-            type="text"
-            value={customAttractionInput}
-            onChange={(e) => setCustomAttractionInput(e.target.value)}
-            placeholder="Add custom attraction or place (e.g. Scenic Viewpoint)..."
-            className="flex-1 px-3.5 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2 bg-[#0F1E36] hover:bg-[#1E3A8A] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shrink-0 shadow-xs flex items-center gap-1"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Place</span>
-          </button>
-        </form>
+        <div className="space-y-1.5 pt-1">
+          <form onSubmit={handleAddCustomAttraction} className="flex gap-2">
+            <input
+              id="custom-place-input"
+              type="text"
+              value={customAttractionInput}
+              onChange={(e) => {
+                setCustomAttractionInput(e.target.value);
+                if (attractionError) setAttractionError(null);
+              }}
+              placeholder="Enter place or attraction name (e.g. Amber Fort, Baga Beach, City Palace)..."
+              className={`flex-1 px-3.5 py-2 rounded-xl text-xs text-slate-900 transition-all ${
+                attractionError
+                  ? 'bg-rose-50/30 border border-rose-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/20'
+                  : 'bg-stone-50 border border-stone-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488]'
+              }`}
+            />
+            <button
+              type="submit"
+              id="add-place-btn"
+              className="px-4 py-2 bg-[#0F1E36] hover:bg-[#1E3A8A] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shrink-0 shadow-xs flex items-center gap-1.5 active:scale-95"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Place</span>
+            </button>
+          </form>
+          {attractionError && (
+            <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>{attractionError}</span>
+            </p>
+          )}
+        </div>
 
         {/* Selected Attractions Display */}
         <div className="pt-2 border-t border-stone-100">
@@ -1162,25 +1357,45 @@ export const TripBuilderSection: React.FC<TripBuilderSectionProps> = ({
       </div>
 
       {/* =========================================================================
-          SECTION 6: GENERATE MY TRIP PLAN (Action Button & Resulting Itinerary)
+          SECTION 6: GENERATE MY PLAN (Action Buttons & Resulting Itinerary)
           ========================================================================= */}
       <div className="space-y-6">
+        {/* Validation Errors banner above the button */}
+        {validationErrors.length > 0 && (
+          <div
+            id="planner-validation-banner"
+            className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 space-y-1.5 animate-in fade-in max-w-xl mx-auto"
+          >
+            <div className="flex items-center gap-2 font-bold text-rose-900">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>Please complete required trip details before generating plan:</span>
+            </div>
+            <ul className="list-disc list-inside pl-2 space-y-0.5 text-rose-700">
+              {validationErrors.map((err, i) => (
+                <li key={i}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           {/* Primary Action Button */}
           <button
             type="button"
+            id="generate-plan-btn"
             onClick={handleGeneratePlan}
-            className="w-full sm:w-auto px-8 py-3.5 bg-[#0D9488] hover:bg-[#0f766e] text-white text-sm font-bold rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-8 py-3.5 bg-[#0D9488] hover:bg-[#0f766e] text-white text-sm font-bold rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
           >
             <Sparkles className="w-4 h-4 text-teal-200" />
-            <span>Generate My Trip Plan</span>
+            <span>Generate My Plan</span>
           </button>
 
           {/* Reset Button */}
           <button
             type="button"
+            id="reset-plan-btn"
             onClick={handleResetPlan}
-            className="w-full sm:w-auto px-6 py-3.5 bg-white border border-stone-300 hover:bg-stone-100 text-slate-700 text-xs font-bold rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            className="w-full sm:w-auto px-6 py-3.5 bg-white border border-stone-300 hover:bg-stone-100 text-slate-700 text-xs font-bold rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Plan</span>
