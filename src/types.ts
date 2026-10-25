@@ -229,23 +229,36 @@ export interface RankedTransportSummary {
 }
 
 export interface HotelRoomType {
+  id?: string;
   name: string;
+  roomType?: 'Standard' | 'Deluxe' | 'Family Room' | 'Suite' | 'Heritage Suite' | 'Villa / Cottage' | string;
+  image?: string;
   maxOccupancy: number;
+  bedConfiguration?: string;
+  roomSizeSqFt?: number;
   isAc: boolean;
   pricePerNight: number;
+  taxPercentage?: number;
+  facilities?: string[];
+  description?: string;
 }
 
 export interface HotelOption {
   id: string;
   name: string;
-  propertyCategory: 'TTD Choultry' | 'APTDC Haritha' | 'Verified Budget Hotel' | 'Verified Family Comfort' | 'Premium Family Hotel';
-  locationArea: 'Tirupati Downhill (Near Railway Station)' | 'Alipiri Footpath Base' | 'Kapila Theertham Road' | 'Tirumala Hilltop';
+  destination?: 'Tirupati' | 'Manali' | 'Kerala' | 'Jaipur' | 'Varanasi' | string;
+  destinationSlug?: 'tirupati' | 'manali' | 'kerala' | 'jaipur' | 'varanasi' | string;
+  image?: string;
+  galleryImages?: string[];
+  propertyCategory: string;
+  locationArea: string;
   address: string;
-  coordinates: { lat: number; lng: number };
-  distanceToTtdTempleKm: number;
-  distanceToAlipiriKm: number;
-  distanceToRailwayStationKm: number;
-  distanceToBusStandKm: number;
+  shortDescription?: string;
+  coordinates?: { lat: number; lng: number };
+  distanceToTtdTempleKm?: number;
+  distanceToAlipiriKm?: number;
+  distanceToRailwayStationKm?: number;
+  distanceToBusStandKm?: number;
   roomTypes: HotelRoomType[];
   basePricePerRoomPerNight: number;
   taxPercentage: number;
@@ -260,8 +273,9 @@ export interface HotelOption {
   checkInTime: string;
   checkOutTime: string;
   cancellationPolicy: string;
-  sourceName: string;
-  verificationStatus: 'OFFICIAL_PORTAL_VERIFIED' | 'PUBLIC_DIRECTORY_VERIFIED';
+  sourceName?: string;
+  verificationStatus?: string;
+  verificationBadge?: string;
   lastVerified: string;
 }
 

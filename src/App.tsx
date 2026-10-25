@@ -70,6 +70,7 @@ import {
   SEED_GUIDES,
   SEED_REVIEWS,
 } from './data/platformSeed';
+import { ALL_HOTELS } from './data/hotelsData';
 import { TransportSection } from './components/TransportSection';
 import { HotelsSection } from './components/HotelsSection';
 import { PackagesSection } from './components/PackagesSection';
@@ -312,12 +313,23 @@ export default function App() {
   // Core editable Trip Parameters
   const [tripParams, setTripParams] = useState<TripParams>(() => {
     try {
-      const saved = localStorage.getItem('triptogether_params_v2');
-      if (saved) return JSON.parse(saved);
+      // Purge legacy cache with hardcoded defaults
+      localStorage.removeItem('triptogether_params_v2');
+      const saved = localStorage.getItem('triptogether_params_v3');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.origin === 'Tirupati' || parsed.origin === 'Kakinada' || parsed.origin === 'Pickup Location') {
+          parsed.origin = '';
+        }
+        if (parsed.destination === 'Tirupati' || parsed.destination === 'Kakinada' || parsed.destination === 'Destination') {
+          parsed.destination = '';
+        }
+        return parsed;
+      }
     } catch {}
     return {
-      origin: 'Pickup Location',
-      destination: 'Tirupati',
+      origin: '',
+      destination: '',
       travelDate: '2026-10-25',
       urgency: 'scheduled',
       travellers: 2,
@@ -385,7 +397,7 @@ export default function App() {
   // Sync state to localStorage for persistence
   useEffect(() => {
     try {
-      localStorage.setItem('triptogether_params_v2', JSON.stringify(tripParams));
+      localStorage.setItem('triptogether_params_v3', JSON.stringify(tripParams));
     } catch {}
   }, [tripParams]);
 
@@ -1994,19 +2006,12 @@ export default function App() {
         {/* HOTELS SECTION */}
         {activeSection === 'hotels' && (
           <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10 space-y-8">
-            <button
-              type="button"
-              onClick={() => navigateAndScroll('dashboard')}
-              className="text-xs font-semibold text-[#0D9488] hover:underline block cursor-pointer"
-            >
-              ← Back to Home
-            </button>
             <HotelsSection
               tripParams={tripParams}
               setTripParams={setTripParams}
-              hotels={TIRUPATI_HOTELS}
-              hotelImageUrl={tirupatiHotelImg}
+              hotels={ALL_HOTELS}
               onShortlistBooking={handleShortlistBooking}
+              onNavigateHome={() => navigateAndScroll('dashboard')}
             />
           </div>
         )}

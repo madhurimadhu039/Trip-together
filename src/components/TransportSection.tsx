@@ -311,7 +311,7 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
               Smart Multi-Modal Corridor · Customized Route & Date
             </p>
             <h2 className="text-2xl font-bold text-slate-900 mt-1">
-              Find Transport: {tripParams.origin} ➔ {tripParams.destination}
+              Find Transport: {tripParams.origin && tripParams.destination ? `${tripParams.origin} ➔ ${tripParams.destination}` : 'Customized Route'}
             </h2>
           </div>
 
@@ -323,7 +323,7 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
                 type="text"
                 value={tripParams.origin}
                 onChange={(e) => setTripParams((p) => ({ ...p, origin: e.target.value }))}
-                placeholder="Pickup Location"
+                placeholder="Enter pickup location"
                 className="w-28 sm:w-36 text-xs font-semibold text-slate-900 focus:outline-none"
               />
             </div>
@@ -347,7 +347,7 @@ export const TransportSection: React.FC<TransportSectionProps> = ({
                 type="text"
                 value={tripParams.destination}
                 onChange={(e) => setTripParams((p) => ({ ...p, destination: e.target.value }))}
-                placeholder="Destination"
+                placeholder="Enter destination"
                 className="w-28 sm:w-36 text-xs font-semibold text-slate-900 focus:outline-none"
               />
             </div>
